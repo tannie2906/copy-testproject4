@@ -24,15 +24,19 @@ class File(models.Model):
     is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     is_starred = models.BooleanField(default=False)
-    file_path = models.FileField(upload_to='uploads/')
+    #file_path = models.FileField(upload_to='uploads/')
+    file_path = models.CharField(max_length=500, blank=True, null=True)
     #user = models.ForeignKey(User, on_delete=models.CASCADE)
 
 
+    # Custom save method
     def save(self, *args, **kwargs):
         if self.file and self.file_name:
-            extension = os.path.splitext(self.file.name)[1]  # Get the file extension
-            custom_name = f"{slugify(self.file_name)}{extension}"  # Slugify for safety
-            self.file.name = custom_name
+            folder = 'uploads'
+            extension = os.path.splitext(self.file.name)[1]
+            custom_name = f"{slugify(self.file_name)}{extension}"
+            self.file.name = os.path.join(folder, custom_name)
+
         super().save(*args, **kwargs)
 
     def __str__(self):

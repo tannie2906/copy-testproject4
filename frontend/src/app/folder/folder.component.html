@@ -78,13 +78,19 @@
                 [ngClass]="{ 'adjust-position': file.adjustDropdown }"
                 *ngIf="file.showDropdown"
               >
-                <a href="#" (click)="onRename(file)">Rename</a>
-                <a href="#" (click)="onMove(file)">Move</a>
-                <a href="#" (click)="onShare(file)">Share</a>
-                <a href="#" (click)="onDownload(file, $event)">Download</a>
-                <a href="#" (click)="onDelete(file, $event)">Delete</a>
+              <button (click)="renameFile(file.id)">Rename</button>
+              <button (click)="deleteFile(file.id)">Delete</button>
+              
+              <button (click)="downloadFile(file.id)">Download</button>
+              <button (click)="shareFile(file.id)">Share</button>
               </div>
             </div>
+            <!-- Rename Dialog -->
+<div *ngIf="selectedFileId">
+  <input type="text" [(ngModel)]="newFileName" placeholder="Enter new name" />
+  <button (click)="renameFile(selectedFileId)">Save</button>
+  <button (click)="selectedFileId = null">Cancel</button>
+</div>
           </td>
         </tr>
       </tbody>

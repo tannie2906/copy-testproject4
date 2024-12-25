@@ -167,8 +167,8 @@ STATICFILES_DIRS = [
 # This is where Django will collect all static files (e.g., during production with 'collectstatic')
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Django will collect static files here
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = '/media/'  # URL prefix for media files
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # Root directory for all media files
 
 
 # Default primary key field type

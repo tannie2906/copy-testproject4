@@ -5,6 +5,7 @@ import { FileService, File } from '../services/file.service';
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { UserFile } from '../models/user-file.model'; 
+import axios from 'axios';
 
 @Component({
   selector: 'app-folder',
@@ -17,6 +18,8 @@ export class FolderComponent implements OnInit {
   folderFiles: File[] = [];
   showStarredFiles: boolean = false; // To toggle between main and starred view
   starredFiles: any[] = []; // Holds starred files
+  selectedFileId: number | null = null;
+  newFileName: string = '';
 
   // To track sort order for each column
   sortOrder: { [key: string]: 'asc' | 'desc' } = {
@@ -52,17 +55,17 @@ export class FolderComponent implements OnInit {
     }
   }
 
-  fetchFiles(): void {
-    this.fileService.getFolderFiles().subscribe({
-      next: (data) => {
-        console.log('API Response:', data); // Debug to ensure correct data structure
-        this.files = data;
-      },
-      error: (error) => {
-        console.error('Error fetching files:', error);
-      },
-    });
-  }
+  //fetchFiles(): void {
+    //this.fileService.getFolderFiles().subscribe({
+      //next: (data) => {
+        //console.log('API Response:', data); // Debug to ensure correct data structure
+        //this.files = data;
+      //},
+      //error: (error) => {
+        //console.error('Error fetching files:', error);
+      //},
+    //});
+ // }
 
   // Handle file deletion
   onDelete(file: File, event?: Event): void {
@@ -185,21 +188,26 @@ export class FolderComponent implements OnInit {
 
   onRename(file: any): void {
     const newName = prompt('Enter a new name for the file:', file.filename);
-
-    if (newName && newName.trim() !== '' && newName !== file.filename) {
-      this.fileService.renameFile(file.id, newName).subscribe({
-        next: (response) => {
-          console.log('Rename Successful Response:', response);
-          file.filename = newName;
-          alert('File renamed successfully!');
-        },
-        error: (error) => {
-          console.error('Rename Failed - Error Response:', error);
-          alert(error.error?.error || 'Failed to rename the file. Please try again.');
-        }
-      });
+  
+    // Validate input
+    if (!newName || newName.trim() === '') {
+      alert('File name cannot be empty.');
+      return;
     }
-  }      
+  
+    // Perform rename operation
+    this.fileService.renameFile(file.id, newName).subscribe({
+      next: (response) => {
+        file.filename = newName; // Update UI
+        alert('File renamed successfully!');
+      },
+      error: (error: HttpErrorResponse) => {
+        console.error('Error renaming file:', error);
+        alert(error.error?.error || 'Failed to rename the file.');
+      },
+    });
+  }
+     
 
   onGetStartedClick(): void {
     this.router.navigate(['/upload']);  // Routes to the upload page (similar to the HomeComponent)
@@ -308,5 +316,88 @@ export class FolderComponent implements OnInit {
 
     // Open the file in a new tab
     window.open(fileUrl, '_blank');
+  }
+
+  async fetchFiles() {
+    const token = this.authService.getToken();
+    const response = await axios.get('http://127.0.0.1:8000/api/files/', {
+      headers: { Authorization: `Token ${token}` },
+    });
+    this.files = response.data;
+  }
+
+  async renameFile(fileId: number) {
+    const token = this.authService.getToken();
+  
+    // Prompt user for new name
+    const newFileName = window.prompt('Enter new file name:', '');
+  
+    // Validate input
+    if (!newFileName || newFileName.trim() === '') {
+      alert('File name cannot be empty!');
+      return; // Stop if name is invalid
+    }
+  
+    const payload = { name: newFileName.trim() }; // Trimmed input
+  
+    console.log('Sending payload:', payload); // Debug payload
+  
+    // Send request
+    await axios.post(
+      `http://127.0.0.1:8000/api/rename/${fileId}/`,
+      payload,
+      {
+        headers: {
+          Authorization: `Token ${token}`,
+          'Content-Type': 'application/json', // Ensure JSON format
+        },
+      }
+    );
+  
+    alert('File renamed successfully!');
+    this.fetchFiles(); // Refresh files
+  }
+  
+  
+  async deleteFile(fileId: number) {
+    const token = this.authService.getToken();
+    await axios.post(
+      `http://127.0.0.1:8000/api/delete/${fileId}/`,
+      {},
+      {
+        headers: { Authorization: `Token ${token}` },
+      }
+    );
+    alert('File moved to trash.');
+    this.fetchFiles();
+  }
+  async downloadFile(fileId: number) {
+    const token = this.authService.getToken();
+    const response = await axios.get(
+      `http://127.0.0.1:8000/api/download/${fileId}/`,
+      {
+        headers: { Authorization: `Token ${token}` },
+        responseType: 'blob', // Download as binary data
+      }
+    );
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'file'); // Dynamic name can be set here
+    document.body.appendChild(link);
+    link.click();
+  }
+
+  async shareFile(fileId: number) {
+    const token = this.authService.getToken();
+    const response = await axios.post(
+      `http://127.0.0.1:8000/api/share/${fileId}/`,
+      {},
+      {
+        headers: { Authorization: `Token ${token}` },
+      }
+    );
+    const shareLink = response.data.share_link;
+    alert(`Shareable link: ${shareLink}`);
   }
 }

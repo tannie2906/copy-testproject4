@@ -99,7 +99,7 @@ export class AppComponent implements OnInit {
   goToSettings(): void {
     this.router.navigate(['/settings']);
   }
-
+  
   //search bar
   search(): void {
     if (this.query.trim()) {

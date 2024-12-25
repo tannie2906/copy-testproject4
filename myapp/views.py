@@ -1,4 +1,5 @@
 from datetime import timezone
+import re
 import shutil
 from rest_framework.views import APIView
 from rest_framework.response import Response #handle error
@@ -37,6 +38,8 @@ from django.utils.text import slugify
 from .models import DeletedFile, UploadedFile, File, SharedFile, Profile
 from .serializers import DeletedFilesSerializer, UserSerializer, UploadedFileSerializer, UserRegistrationSerializer, FileSerializer, ProfilePictureSerializer, ProfileSerializer
 from myapp.models import File, DeletedFile
+from .encryption_utils import encrypt_file
+from .encryption_utils import decrypt_file
 
 import json
 import logging
@@ -119,52 +122,90 @@ def share_file(request):
 
     return Response({"file_id": file_id, "share_links": share_links}, status=201)
 
+# File Sharing API
+class ShareFileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, file_id):
+        try:
+            file_instance = get_object_or_404(File, id=file_id, user_id=request.user.id)
+
+            # Mock share logic (e.g., generating a shareable link)
+            share_link = f"http://example.com/share/{file_id}"
+
+            return Response({"message": "File shared successfully.", "share_link": share_link}, status=200)
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
 # File Upload
 class FileUploadView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         try:
+            # Extract uploaded file and metadata
             uploaded_file = request.FILES.get('file')
-            file_name = request.data.get('name', '').strip()  # Get custom name from request
-            user_id = request.user.id  # Get the current authenticated user's ID
+            file_name = request.data.get('name', '').strip()
+            user_id = request.user.id
 
+            # Validation: Check if file and name are provided
             if not uploaded_file:
                 return Response({"error": "No file uploaded."}, status=400)
-
             if not file_name:
                 return Response({"error": "File name is required."}, status=400)
 
-            # Ensure 'uploads/' prefix for file path
-            upload_dir = os.path.join(settings.MEDIA_ROOT, 'uploads')
-            os.makedirs(upload_dir, exist_ok=True)  # Create directory if it doesn't exist
+            # Validation: File size and type restrictions
+            allowed_extensions = ['jpg', 'jpeg', 'png', 'pdf']
+            max_size = 5 * 1024 * 1024  # 5 MB
 
-            # Define the file path in 'uploads/' directory
-            safe_file_name = slugify(file_name) + os.path.splitext(uploaded_file.name)[1]
+            file_extension = uploaded_file.name.split('.')[-1].lower()
+            if file_extension not in allowed_extensions:
+                return Response({"error": "Invalid file type."}, status=400)
+            if uploaded_file.size > max_size:
+                return Response({"error": "File size exceeds 5MB limit."}, status=400)
+
+            # Generate safe filename and upload path
+            safe_file_name = f"{slugify(file_name)}.{file_extension}"
+            upload_dir = os.path.join(settings.MEDIA_ROOT, 'uploads')
+            os.makedirs(upload_dir, exist_ok=True)
+
             file_path = os.path.join(upload_dir, safe_file_name)
 
-            # Save the file manually
+            # Avoid overwriting existing files
+            counter = 1
+            while os.path.exists(file_path):
+                safe_file_name = f"{slugify(file_name)}-{user_id}-{counter}.{file_extension}"
+                file_path = os.path.join(upload_dir, safe_file_name)
+                counter += 1
+
+            # Save file to disk
             with open(file_path, 'wb+') as destination:
                 for chunk in uploaded_file.chunks():
                     destination.write(chunk)
 
-            # Create file instance with correct path
+             # Encrypt the file after saving
+            encrypt_file(file_path)
+
+            # Save metadata to database
             file_instance = File.objects.create(
-                file=f"uploads/{safe_file_name}",  # Set relative path starting with 'uploads/'
+                file=f"uploads/{safe_file_name}",
                 file_name=file_name,
                 size=uploaded_file.size,
-                user_id=user_id,  # Use fixed line here
+                user_id=user_id,
             )
 
-            # Return success response
             return Response({
                 "message": "File uploaded successfully!",
                 "file_id": file_instance.id,
                 "file_name": file_instance.file_name
             }, status=201)
 
+        except ValueError as ve:
+            return Response({"error": str(ve)}, status=400)
+        except OSError as oe:
+            return Response({"error": "File system error."}, status=500)
         except Exception as e:
-            print("Error during upload:", str(e))
+            print("Upload Error:", str(e))
             return Response({"error": str(e)}, status=500)
 
 class FileViewSet(viewsets.ModelViewSet):
@@ -243,58 +284,139 @@ class RegisterUserView(APIView):
         return Response(serializer.errors, status=400)
 
 # Rename a file
-class FileRenameView(APIView):
-    permission_classes = [IsAuthenticated]
-    def post(self, request, *args, **kwargs):
-        # Extract the file_id and new_name from the request data
-        file_id = request.data.get('file_id')
-        new_name = request.data.get('new_name')
+#class FileRenameView(APIView):
+ #   permission_classes = [IsAuthenticated]
+  #  def post(self, request, *args, **kwargs):
+   #     # Extract the file_id and new_name from the request data
+    #    file_id = request.data.get('file_id')
+     #   new_name = request.data.get('new_name')
         
-        if not file_id or not new_name:
-            return Response({"error": "file_id or new_name is missing."}, status=status.HTTP_400_BAD_REQUEST)
+      #  if not file_id or not new_name:
+       #     return Response({"error": "file_id or new_name is missing."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Implement file renaming logic here (e.g., rename the file in the system)
         # For now, let's assume we are simply returning the new name for demonstration.
-        return Response({"message": f"File renamed to {new_name} successfully!"}, status=status.HTTP_200_OK)
+      #  return Response({"message": f"File renamed to {new_name} successfully!"}, status=status.HTTP_200_OK)
+
+class RenameFileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, file_id):
+        try:
+            # Validate Content-Type
+            if request.content_type != 'application/json':
+                return Response({"error": "Content-Type must be application/json."}, status=400)
+
+            # Validate name field
+            new_name = request.data.get('name', '').strip()
+            if not new_name:  # Empty name check
+                return Response({"error": "File name cannot be empty."}, status=400)
+
+            # Validate file name format
+            if not re.match(r'^[a-zA-Z0-9_\- ]+$', new_name):
+                return Response({"error": "Invalid file name format."}, status=400)
+
+            # Retrieve file instance
+            file_instance = get_object_or_404(File, id=file_id, user_id=request.user.id)
+            file_path = file_instance.file.path
+
+            # Check if the file exists
+            if not os.path.exists(file_path):
+                return Response({"error": "File not found."}, status=404)
+
+            # Generate new file path
+            file_extension = os.path.splitext(file_instance.file.name)[1]
+            new_file_name = slugify(new_name) + file_extension
+            new_file_path = os.path.join(settings.MEDIA_ROOT, 'uploads', new_file_name)
+
+            # Check duplicate name
+            if os.path.exists(new_file_path):
+                return Response({"error": "File with this name already exists."}, status=400)
+
+            # Rename the file physically and in the database
+            os.rename(file_path, new_file_path)
+            file_instance.file_name = new_name
+            file_instance.file = f"uploads/{new_file_name}"
+            file_instance.save()
+
+            return Response({"message": "File renamed successfully."}, status=200)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
+
+
 
 # File Download
-class DownloadFileAPIView(APIView):
+#class DownloadFileAPIView(APIView):
+#    permission_classes = [IsAuthenticated]
+
+ #   def get(self, request, file_id):
+   #     try:
+            # Retrieve the file record
+    #        file = File.objects.get(id=file_id, user_id=request.user.id)
+
+            # Resolve full file path
+     #       file_path = file.file.path  # Path stored in the model
+      #      file_name = os.path.basename(file.file.name)  # Extract filename
+
+            # Debug logs
+       #     print(f"Requested File Path: {file_path}")
+        #    print(f"File Exists: {os.path.exists(file_path)}")
+
+            # Validate physical file existence
+         #   if not os.path.exists(file_path):
+                # Log and return meaningful error response
+          #      print(f"Error: File {file_path} not found.")
+           #     return Response({"error": "File not found on server."}, status=404)
+
+            # Serve the file as an attachment
+        #    response = FileResponse(
+        #        open(file_path, 'rb'),
+        #        as_attachment=True,
+        #        filename=file_name
+         #   )
+        #    return response
+
+       # except File.DoesNotExist:
+      #      print(f"Error: File ID {file_id} does not exist.")
+      #      return Response({"error": "File does not exist."}, status=404)
+
+     #   except Exception as e:
+      #      print(f"Error occurred: {str(e)}")
+      #      return Response({"error": f"Server error: {str(e)}"}, status=500)
+
+# File Download API
+class DownloadFileView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, file_id):
         try:
-            # Retrieve the file record
-            file = File.objects.get(id=file_id, user_id=request.user.id)
+            file = get_object_or_404(File, id=file_id, user_id=request.user.id)
 
-            # Resolve full file path
-            file_path = file.file.path  # Path stored in the model
-            file_name = os.path.basename(file.file.name)  # Extract filename
-
-            # Debug logs
-            print(f"Requested File Path: {file_path}")
-            print(f"File Exists: {os.path.exists(file_path)}")
-
-            # Validate physical file existence
+            # Check the actual file path
+            file_path = file.file.path
             if not os.path.exists(file_path):
-                # Log and return meaningful error response
-                print(f"Error: File {file_path} not found.")
-                return Response({"error": "File not found on server."}, status=404)
+                return Response({"error": "File not found."}, status=404)
 
-            # Serve the file as an attachment
-            response = FileResponse(
-                open(file_path, 'rb'),
-                as_attachment=True,
-                filename=file_name
-            )
+            # Decrypt the file
+            decrypt_file(file_path)
+
+            # Stream file response
+            response = FileResponse(open(file_path, 'rb'))
+            response['Content-Disposition'] = f'attachment; filename="{file.file_name}"'
+
+            # Re-encrypt after sending
+            encrypt_file(file_path)
+
             return response
 
         except File.DoesNotExist:
-            print(f"Error: File ID {file_id} does not exist.")
-            return Response({"error": "File does not exist."}, status=404)
-
+            return Response({"error": "File not found."}, status=404)
         except Exception as e:
-            print(f"Error occurred: {str(e)}")
-            return Response({"error": f"Server error: {str(e)}"}, status=500)
+            print(f"Download error: {str(e)}")
+            return Response({"error": str(e)}, status=500)
+
 
 # ViewSet for files
 class FileViewSet(viewsets.ModelViewSet):
@@ -489,6 +611,38 @@ class DeletedFileDeleteView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
+# File Delete API
+class DeleteFileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, file_id):
+        try:
+            file_instance = get_object_or_404(File, id=file_id, user_id=request.user.id)
+
+            # Resolve the actual file path
+            file_path = file_instance.file.path
+            if not os.path.exists(file_path):
+                return Response({"error": "File not found."}, status=404)
+
+            # Move file to trash
+            trash_dir = os.path.join(settings.MEDIA_ROOT, 'trash')
+            os.makedirs(trash_dir, exist_ok=True)
+            trash_path = os.path.join(trash_dir, os.path.basename(file_path))
+            os.rename(file_path, trash_path)
+
+            # Update database
+            file_instance.file = f"trash/{os.path.basename(trash_path)}"
+            file_instance.is_deleted = True
+            file_instance.deleted_at = timezone.now()
+            file_instance.save()
+
+            return Response({"message": "File moved to trash."}, status=200)
+
+        except Exception as e:
+            print(f"Delete error: {str(e)}")
+            return Response({"error": str(e)}, status=500)
+
+        
 #@csrf_exempt
 #@api_view(['DELETE'])
 #@permission_classes([IsAuthenticated])
@@ -543,79 +697,101 @@ class DeletedFileDeleteView(APIView):
      #   return Response({"error": str(e)}, status=500)
     
 # Restore deleted files
+#class RestoreFileView(APIView):
+ #   permission_classes = [IsAuthenticated]
+
+  #  def post(self, request):
+   #     try:
+    #        # 1. Get file IDs
+     #       file_ids = request.data.get('file_ids', [])
+      #      if not file_ids:
+       #         return Response({"error": "File IDs are required."}, status=400)
+
+        #    restored_files = []
+        #    failed_files = []
+
+            # 2. Process each file
+         #   for file_id in file_ids:
+          #      try:
+                    # 3. Retrieve deleted file
+           #         deleted_file = DeletedFile.objects.get(id=file_id, user_id=request.user.id)
+
+                    # 4. Paths
+            #        trash_path = os.path.join(settings.MEDIA_ROOT, 'uploads', 'trash', os.path.basename(File.file.name))
+
+                    # Extract original file name
+             #       filename = os.path.basename(deleted_file.file)
+
+                    # Ensure no double 'uploads/' prefix
+              #      if deleted_file.file.startswith("uploads/"):
+               #         restore_path = os.path.join(settings.MEDIA_ROOT, deleted_file.file)
+                #        db_path = deleted_file.file  # Preserve original DB path
+                 #   else:
+                  #      restore_path = os.path.join(settings.MEDIA_ROOT, 'uploads', filename)
+                   #     db_path = f"uploads/{filename}"  # Always prepend uploads/
+
+                    # Debug logs
+                   # print(f"Restoring file: {trash_path} -> {restore_path}")
+                  #  print(f"Database path: {db_path}")
+
+                    # 5. Ensure directory exists
+                  #  os.makedirs(os.path.dirname(restore_path), exist_ok=True)
+
+                    # 6. Move file
+                   # shutil.move(trash_path, restore_path)
+
+                    # 7. Save to File table with correct path
+                  #  restored_file = File.objects.create(
+                   #     id=deleted_file.id,
+                    #    file=db_path,  # Use dynamic db_path
+                     #   file_name=deleted_file.file_name,
+                      #  size=deleted_file.size,
+                       # user_id=request.user.id,
+                      #  is_deleted=False,
+                       # created_at=timezone.now()
+                    #)
+
+                    # 8. Remove from deleted table
+                   # deleted_file.delete()
+                  #  restored_files.append(file_id)
+
+               # except DeletedFile.DoesNotExist:
+                #    failed_files.append({"file_id": file_id, "error": "File not found."})
+              #  except Exception as e:
+               #     failed_files.append({"file_id": file_id, "error": str(e)})
+
+            # 9. Response
+          #  return Response({
+          #      "message": "Restore process completed.",
+          #      "restored": restored_files,
+          #      "failed": failed_files
+         #   }, status=200)
+
+      #  except Exception as e:
+      #      return Response({"error": str(e)}, status=500)
+
+# File Restore API
 class RestoreFileView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self, request):
+    def post(self, request, file_id):
         try:
-            # 1. Get file IDs
-            file_ids = request.data.get('file_ids', [])
-            if not file_ids:
-                return Response({"error": "File IDs are required."}, status=400)
+            file_instance = get_object_or_404(File, id=file_id, user_id=request.user.id, is_deleted=True)
 
-            restored_files = []
-            failed_files = []
+            # Restore file from trash
+            trash_dir = os.path.join(settings.MEDIA_ROOT, 'trash')
+            original_path = os.path.join(settings.MEDIA_ROOT, file_instance.file)
+            trash_path = os.path.join(trash_dir, os.path.basename(file_instance.file))
 
-            # 2. Process each file
-            for file_id in file_ids:
-                try:
-                    # 3. Retrieve deleted file
-                    deleted_file = DeletedFile.objects.get(id=file_id, user_id=request.user.id)
+            os.rename(trash_path, original_path)
+            file_instance.is_deleted = False
+            file_instance.deleted_at = None
+            file_instance.save()
 
-                    # 4. Paths
-                    trash_path = os.path.join(settings.MEDIA_ROOT, 'uploads', 'trash', os.path.basename(File.file.name))
-
-                    # Extract original file name
-                    filename = os.path.basename(deleted_file.file)
-
-                    # Ensure no double 'uploads/' prefix
-                    if deleted_file.file.startswith("uploads/"):
-                        restore_path = os.path.join(settings.MEDIA_ROOT, deleted_file.file)
-                        db_path = deleted_file.file  # Preserve original DB path
-                    else:
-                        restore_path = os.path.join(settings.MEDIA_ROOT, 'uploads', filename)
-                        db_path = f"uploads/{filename}"  # Always prepend uploads/
-
-                    # Debug logs
-                    print(f"Restoring file: {trash_path} -> {restore_path}")
-                    print(f"Database path: {db_path}")
-
-                    # 5. Ensure directory exists
-                    os.makedirs(os.path.dirname(restore_path), exist_ok=True)
-
-                    # 6. Move file
-                    shutil.move(trash_path, restore_path)
-
-                    # 7. Save to File table with correct path
-                    restored_file = File.objects.create(
-                        id=deleted_file.id,
-                        file=db_path,  # Use dynamic db_path
-                        file_name=deleted_file.file_name,
-                        size=deleted_file.size,
-                        user_id=request.user.id,
-                        is_deleted=False,
-                        created_at=timezone.now()
-                    )
-
-                    # 8. Remove from deleted table
-                    deleted_file.delete()
-                    restored_files.append(file_id)
-
-                except DeletedFile.DoesNotExist:
-                    failed_files.append({"file_id": file_id, "error": "File not found."})
-                except Exception as e:
-                    failed_files.append({"file_id": file_id, "error": str(e)})
-
-            # 9. Response
-            return Response({
-                "message": "Restore process completed.",
-                "restored": restored_files,
-                "failed": failed_files
-            }, status=200)
-
+            return Response({"message": "File restored successfully."}, status=200)
         except Exception as e:
-            return Response({"error": str(e)}, status=500)
-    
+            return Response({"error": str(e)}, status=500)    
+
 #@api_view(['DELETE'])
 #@permission_classes([IsAuthenticated])
 #def permanently_delete(request, id):
@@ -805,7 +981,6 @@ class UploadProfilePictureView(APIView):
         user_profile.save()  # Save to the database
 
         return Response({"message": "Profile picture uploaded successfully"}, status=status.HTTP_200_OK)
-
 
 # Define pagination first
 class FileSearchPagination(PageNumberPagination):
