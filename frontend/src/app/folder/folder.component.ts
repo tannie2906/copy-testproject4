@@ -73,22 +73,22 @@ export class FolderComponent implements OnInit {
         event.preventDefault();
     }
 
-    const isDeleted = file.is_deleted;
+    const isDeleted = file.is_deleted; // Check if already deleted
 
     if (confirm('Are you sure you want to delete this file?')) {
         this.fileService.deleteFile(file.id, isDeleted).subscribe({
-            next: () => {
-                alert('File deleted successfully.');
-                this.fetchFiles(); // Refresh file list after deletion
-            },
-            error: (error) => {
-                alert('Failed to delete file: ' + (error.error.message || 'Unknown error.'));
-                console.error('Error deleting file:', error);
-            },
-        });
+          next: () => {
+              alert('File deleted successfully.');
+              this.fetchFiles(); // Refresh the file list
+          },
+          error: (error) => {
+              alert('Failed to delete file: ' + (error.error.message || 'Unknown error.'));
+              console.error('Error deleting file:', error);
+          },
+      });
     }
-}    
-  
+  }
+   
   // Sort files by column
   sortFiles(column: string): void {
     this.sortOrder[column] = this.sortOrder[column] === 'asc' ? 'desc' : 'asc';
@@ -208,7 +208,6 @@ export class FolderComponent implements OnInit {
     });
   }
      
-
   onGetStartedClick(): void {
     this.router.navigate(['/upload']);  // Routes to the upload page (similar to the HomeComponent)
   }
@@ -357,7 +356,6 @@ export class FolderComponent implements OnInit {
     alert('File renamed successfully!');
     this.fetchFiles(); // Refresh files
   }
-  
   
   async deleteFile(fileId: number) {
     const token = this.authService.getToken();

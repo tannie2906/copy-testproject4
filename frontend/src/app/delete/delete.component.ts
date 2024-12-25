@@ -74,67 +74,74 @@ export class DeleteComponent implements OnInit {
   
   // Restore a file
   restoreFile(fileId: number): void {
-    const headers = new HttpHeaders()
-      .set('Authorization', `Token ${this.authService.getToken() || ''}`)
-      .set('X-CSRFToken', this.getCookie('csrftoken')); // Include CSRF token
+    const fileIds = [fileId]; // Convert to an array for API compatibility
   
-    this.folderService.restoreFiles([fileId], headers).subscribe(
-      () => {
-        console.log('File restored successfully!');
-        this.fetchDeletedFiles(); // Refresh the list after restoring
+    this.folderService.restoreFiles(fileIds).subscribe(
+      (response) => {
+        console.log('File restored successfully!', response);
+  
+        // Handle partial failures
+        if (response.failed && response.failed.length > 0) {
+          console.error('Restore failed for file:', response.failed[0]);
+          alert(`Restore failed: ${response.failed[0].error}`);
+        } else {
+          alert('File restored successfully!');
+        }
+  
+        // Refresh the deleted files list after restoring
+        this.fetchDeletedFiles();
       },
       (error: HttpErrorResponse) => {
         console.error('Error restoring file:', error.message);
+        alert('Failed to restore the file. Please try again.');
       }
-    );    
+    );
   }
+  
   
   
    // Restore selected files
-   // Restore Selected Files
-restoreSelectedFiles(): void {
-  const headers = new HttpHeaders().set(
-    'Authorization',
-    `Token ${this.authService.getToken() || ''}`
-  );
-
-  const fileIds = this.selectedFiles; // Selected file IDs
-
-  if (!fileIds.length) {
-    console.warn('No files selected for restoration.');
-    return;
-  }
-
-  // Optimistically update UI before server confirmation
-  const restoredFiles = this.deletedFiles.filter(file => fileIds.includes(file.id));
-  this.deletedFiles = this.deletedFiles.filter(file => !fileIds.includes(file.id));
-
-  this.folderService.restoreFiles(fileIds, headers).subscribe(
-    (response) => {
-      console.log(`Restored ${fileIds.length} files successfully:`, response.message);
-
-      // Handle failed restorations
-      if (response.failed && response.failed.length > 0) {
-        console.error('Restore failed for some files:', response.failed);
-        const failedIds = response.failed.map((f: { file_id: any; }) => f.file_id);
-        restoredFiles.forEach(file => {
-          if (failedIds.includes(file.id)) {
-            this.deletedFiles.push(file); // Re-add failed files
-          }
-        });
-      }
-
-      // Refresh files if needed
-      this.fetchDeletedFiles();
-      this.selectedFiles = [];
-    },
-    (error: HttpErrorResponse) => {
-      console.error('Error restoring selected files:', error.message);
-      // Revert UI in case of failure
-      this.deletedFiles = [...this.deletedFiles, ...restoredFiles];
+   restoreSelectedFiles(): void {
+    const fileIds = this.selectedFiles;
+  
+    if (!fileIds.length) {
+      console.warn('No files selected for restoration.');
+      return;
     }
-  );
-}
+  
+    // Optimistically update UI
+    const restoredFiles = this.deletedFiles.filter(file => fileIds.includes(file.id));
+    this.deletedFiles = this.deletedFiles.filter(file => !fileIds.includes(file.id));
+  
+    this.folderService.restoreFiles(fileIds).subscribe(
+      (response) => {
+        console.log(`Restored ${fileIds.length} files successfully:`, response);
+  
+        // Handle failed restorations
+        if (response.failed && response.failed.length > 0) {
+          console.error('Restore failed for some files:', response.failed);
+          const failedIds = response.failed.map((f: { file_id: any }) => f.file_id);
+          restoredFiles.forEach(file => {
+            if (failedIds.includes(file.id)) {
+              this.deletedFiles.push(file); // Re-add failed files
+            }
+          });
+        }
+  
+        // Refresh file list
+        this.fetchDeletedFiles();
+        this.selectedFiles = [];
+      },
+      (error: HttpErrorResponse) => {
+        console.error('Error restoring selected files:', error.message);
+        // Revert UI in case of failure
+        this.deletedFiles = [...this.deletedFiles, ...restoredFiles];
+      }
+    );
+  }
+  
+   
+
    
   // Permanently delete a file
   permanentlyDeleteFile(fileId: number): void {

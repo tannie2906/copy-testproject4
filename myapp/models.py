@@ -90,9 +90,9 @@ class DeletedFile(models.Model):
     id = models.AutoField(primary_key=True)
    # file = models.FileField(upload_to='uploads/') 
     #file = models.FileField(upload_to='trash/')
-    file = models.CharField(max_length=500)
+    file = models.CharField(max_length=500)  # Trash path
     user_id = models.IntegerField()
-    file_name = models.CharField(max_length=255) 
+    file_name = models.CharField(max_length=255)
     deleted_at = models.DateTimeField(default=now)
     size = models.IntegerField()
 

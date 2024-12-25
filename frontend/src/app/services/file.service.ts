@@ -88,14 +88,15 @@ export class FileService {
 
   // delete method 
   deleteFile(fileId: number, isDeleted: boolean = false): Observable<any> {
-    const endpoint = isDeleted ? 'delete' : 'files/delete';  // 'files/delete' is the correct endpoint
+    const endpoint = isDeleted ? 'delete/permanent' : 'delete'; // Endpoint fix
     const url = `${this.apiUrl}/${endpoint}/${fileId}/`;
 
-    return this.http.delete(url, this.getHeaders()).pipe(
+    return this.http.post(url, {}, this.getHeaders()).pipe( // Use POST here!
         tap(() => console.log(`File ${isDeleted ? 'permanently' : 'temporarily'} deleted: ID ${fileId}`)),
         catchError(this.handleError('deleteFile'))
     );
   }
+
 
   // Fetch deleted files
   getDeletedFiles(): Observable<any> {

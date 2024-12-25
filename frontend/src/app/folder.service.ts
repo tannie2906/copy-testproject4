@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
-import { catchError, Observable, of } from 'rxjs';
+import { catchError, Observable, of, tap, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
 
 @Injectable({
@@ -30,24 +30,26 @@ deleteFile(fileId: string): Observable<any> {
 }
 
   // Restore files service method
-restoreFiles(fileIds: number[], headers?: HttpHeaders): Observable<any> {
-  const url = `${this.apiUrl}/restore-files/`; // Endpoint for restore
-  console.log('Restore API URL:', url); // Debugging
-
-  // Ensure headers are included
-  const httpHeaders = headers || new HttpHeaders().set(
-    'Authorization',
-    `Token ${this.authService.getToken()}`
-  );
-
-  // POST request with file IDs
-  return this.http.post(url, { file_ids: fileIds }, { headers: httpHeaders }).pipe(
-    catchError((error: HttpErrorResponse) => {
-      console.error('Restore error:', error);
-      return of({ error: error.message });
-    })
-  );
-}
+  restoreFiles(fileIds: number[]): Observable<any> {
+    const url = `${this.apiUrl}/restore-files/`;
+  
+    const headers = new HttpHeaders()
+      .set('Authorization', `Token ${this.authService.getToken() || ''}`)
+      .set('Content-Type', 'application/json');
+  
+    // POST file IDs to restore
+    return this.http.post(url, { file_ids: fileIds }, { headers }).pipe(
+      tap((response) => {
+        console.log('Restore response:', response);
+      }),
+      catchError((error: HttpErrorResponse) => {
+        console.error('Restore error:', error.message);
+        return throwError(error);
+      })
+    );
+  }
+  
+  
 
   // Permanently delete a file by ID
   permanentlyDeleteFile(fileId: number, headers?: HttpHeaders): Observable<any> {
