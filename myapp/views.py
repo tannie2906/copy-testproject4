@@ -188,10 +188,11 @@ class FileUploadView(APIView):
 
             # Save metadata to database
             file_instance = File.objects.create(
-                file=f"uploads/{safe_file_name}",
+                file=f"uploads/{os.path.basename(file_path)}",  # Include 'uploads/' in DB
                 file_name=file_name,
                 size=uploaded_file.size,
                 user_id=user_id,
+                file_path=file_path  # Save the physical path for reference
             )
 
             return Response({
@@ -318,7 +319,7 @@ class RenameFileView(APIView):
 
             # Retrieve file instance
             file_instance = get_object_or_404(File, id=file_id, user_id=request.user.id)
-            file_path = file_instance.file.path
+            file_path = os.path.join(settings.MEDIA_ROOT, 'uploads', os.path.basename(file_instance.file.name))
 
             # Check if the file exists
             if not os.path.exists(file_path):
@@ -343,8 +344,6 @@ class RenameFileView(APIView):
 
         except Exception as e:
             return Response({"error": str(e)}, status=500)
-
-
 
 
 # File Download
