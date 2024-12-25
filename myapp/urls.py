@@ -49,8 +49,9 @@ urlpatterns = [
     path('files/delete/<int:id>/', FileDeleteView.as_view(), name='delete_active_file'),
 
     #delete page
-    #path('restore-files/', RestoreFileView.as_view(), name='restore-files'),
     path('permanently-delete/<int:id>/', PermanentlyDeleteFilesView.as_view(), name='permanently_delete'),
+    path('permanently-delete/', PermanentlyDeleteFilesView.as_view(), name='permanently_delete_bulk'),  # For multiple files
+
     path('empty-trash/', EmptyTrashView.as_view(), name='empty_trash'),
     path('deleted-files/', DeletedFilesView.as_view(), name='deleted-files'),
 

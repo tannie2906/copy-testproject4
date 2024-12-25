@@ -52,14 +52,41 @@ deleteFile(fileId: string): Observable<any> {
   
 
   // Permanently delete a file by ID
-  permanentlyDeleteFile(fileId: number, headers?: HttpHeaders): Observable<any> {
-    return this.http.delete(`${this.apiUrl}/permanently-delete/${fileId}/`, { headers });
-  }
+ // Permanently delete a single file
+permanentlyDeleteFile(fileId: number, headers?: HttpHeaders): Observable<any> {
+  const url = `${this.apiUrl}/permanently-delete/${fileId}/`; // Single file URL
+  return this.http.delete(url, { headers }).pipe(
+    catchError((error: HttpErrorResponse) => {
+      console.error('Permanent delete error:', error);
+      return throwError(() => new Error(error.message));
+    })
+  );
+}
+
+// Permanently delete multiple files
+permanentlyDeleteMultipleFiles(fileIds: number[], headers?: HttpHeaders): Observable<any> {
+  const url = `${this.apiUrl}/permanently-delete/`; // Bulk delete URL
+  return this.http.request('delete', url, { body: { file_ids: fileIds }, headers }).pipe(
+    catchError((error: HttpErrorResponse) => {
+      console.error('Bulk permanent delete error:', error);
+      return throwError(() => new Error(error.message));
+    })
+  );
+}
+
 
   // Empty trash
   emptyTrash(headers?: HttpHeaders): Observable<any> {
-    return this.http.delete(`${this.apiUrl}/empty-trash/`, { headers });
+    const url = `${this.apiUrl}/empty-trash/`; // API endpoint
+    return this.http.delete(url, { headers }).pipe(
+      catchError((error: HttpErrorResponse) => {
+        console.error('Empty Trash Error:', error.message);
+        return throwError(() => error); // Handle errors properly
+      })
+    );
   }
+  
+  
 
   private getCookie(name: string): string {
     const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));

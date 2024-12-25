@@ -145,52 +145,65 @@ export class DeleteComponent implements OnInit {
    
   // Permanently delete a file
   permanentlyDeleteFile(fileId: number): void {
-    const headers = new HttpHeaders().set('X-CSRFToken', this.getCookie('csrftoken')); // Include CSRF token
+    const headers = new HttpHeaders().set('X-CSRFToken', this.getCookie('csrftoken'));
   
-    // Use the correct method name (permanentlyDeleteFile)
-    this.folderService.permanentlyDeleteFile(fileId, headers).subscribe(
-      () => {
-        this.fetchDeletedFiles(); // Refresh the list after permanent deletion
-      },
-      (error: HttpErrorResponse) => { // Explicitly type the error parameter
-        console.error('Error permanently deleting file:', error.message);
-      }
-    );
+    if (confirm('Are you sure you want to permanently delete this file? This action cannot be undone.')) {
+      this.folderService.permanentlyDeleteFile(fileId, headers).subscribe(
+        () => {
+          console.log(`File ID ${fileId} permanently deleted!`);
+          this.fetchDeletedFiles(); // Refresh UI
+        },
+        (error: HttpErrorResponse) => {
+          console.error(`Error permanently deleting file ID ${fileId}:`, error.message);
+        }
+      );
+    }
   }
+  
 
 // Delete selected files permanently
 deleteSelectedFiles(): void {
   const headers = new HttpHeaders().set('X-CSRFToken', this.getCookie('csrftoken'));
 
-  if (this.selectedFiles.length > 0) {
-    // Iterate over selected files
-    this.selectedFiles.forEach((fileId) => {
-      this.folderService.permanentlyDeleteFile(fileId, headers).subscribe(
-        () => {
-          this.fetchDeletedFiles(); // Refresh the list after permanent deletion
-        },
-        (error: HttpErrorResponse) => { // Explicitly type the error parameter
-          console.error(`Error permanently deleting file with ID ${fileId}:`, error.message);
-        }
-      );
-    });
-  } else {
-    console.warn('No files selected for deletion.');
+  if (!this.selectedFiles.length) {
+    console.warn('No files selected for permanent deletion.');
+    return;
+  }
+
+  if (confirm('Are you sure you want to permanently delete these files? This action cannot be undone.')) {
+    const fileIds = this.selectedFiles; // Get selected file IDs
+
+    this.folderService.permanentlyDeleteMultipleFiles(fileIds, headers).subscribe(
+      (response) => {
+        console.log(`Permanently deleted ${fileIds.length} files successfully.`);
+        this.fetchDeletedFiles(); // Refresh UI
+      },
+      (error: HttpErrorResponse) => {
+        console.error('Error permanently deleting files:', error.message);
+      }
+    );
   }
 }
+
 
   // Empty the trash
   emptyTrash(): void {
     const headers = new HttpHeaders().set('X-CSRFToken', this.getCookie('csrftoken'));
-    this.folderService.emptyTrash(headers).subscribe(
-      () => {
-        this.fetchDeletedFiles(); // Refresh the list after emptying trash
-      },
-      (error) => {
-        console.error('Error emptying trash:', error);
-      }
-    );
+  
+    if (confirm('Are you sure you want to permanently delete all files in the trash? This action cannot be undone.')) {
+      this.folderService.emptyTrash(headers).subscribe(
+        () => {
+          alert('Trash emptied successfully!');
+          this.fetchDeletedFiles(); // Refresh deleted files list
+        },
+        (error: HttpErrorResponse) => {
+          console.error('Error emptying trash:', error.message);
+          alert('Failed to empty trash. Please try again.');
+        }
+      );
+    }
   }
+  
 
   // Toggle selection of an individual file
   toggleSelection(fileId: number, event: Event): void {

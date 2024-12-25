@@ -688,80 +688,6 @@ class DeleteFileView(APIView):
        # return Response(serializer.data, status=200)
     #except Exception as e:
      #   return Response({"error": str(e)}, status=500)
-    
-# Restore deleted files
-#class RestoreFileView(APIView):
- #   permission_classes = [IsAuthenticated]
-
-  #  def post(self, request):
-   #     try:
-    #        # 1. Get file IDs
-     #       file_ids = request.data.get('file_ids', [])
-      #      if not file_ids:
-       #         return Response({"error": "File IDs are required."}, status=400)
-
-        #    restored_files = []
-        #    failed_files = []
-
-            # 2. Process each file
-         #   for file_id in file_ids:
-          #      try:
-                    # 3. Retrieve deleted file
-           #         deleted_file = DeletedFile.objects.get(id=file_id, user_id=request.user.id)
-
-                    # 4. Paths
-            #        trash_path = os.path.join(settings.MEDIA_ROOT, 'uploads', 'trash', os.path.basename(File.file.name))
-
-                    # Extract original file name
-             #       filename = os.path.basename(deleted_file.file)
-
-                    # Ensure no double 'uploads/' prefix
-              #      if deleted_file.file.startswith("uploads/"):
-               #         restore_path = os.path.join(settings.MEDIA_ROOT, deleted_file.file)
-                #        db_path = deleted_file.file  # Preserve original DB path
-                 #   else:
-                  #      restore_path = os.path.join(settings.MEDIA_ROOT, 'uploads', filename)
-                   #     db_path = f"uploads/{filename}"  # Always prepend uploads/
-
-                    # Debug logs
-                   # print(f"Restoring file: {trash_path} -> {restore_path}")
-                  #  print(f"Database path: {db_path}")
-
-                    # 5. Ensure directory exists
-                  #  os.makedirs(os.path.dirname(restore_path), exist_ok=True)
-
-                    # 6. Move file
-                   # shutil.move(trash_path, restore_path)
-
-                    # 7. Save to File table with correct path
-                  #  restored_file = File.objects.create(
-                   #     id=deleted_file.id,
-                    #    file=db_path,  # Use dynamic db_path
-                     #   file_name=deleted_file.file_name,
-                      #  size=deleted_file.size,
-                       # user_id=request.user.id,
-                      #  is_deleted=False,
-                       # created_at=timezone.now()
-                    #)
-
-                    # 8. Remove from deleted table
-                   # deleted_file.delete()
-                  #  restored_files.append(file_id)
-
-               # except DeletedFile.DoesNotExist:
-                #    failed_files.append({"file_id": file_id, "error": "File not found."})
-              #  except Exception as e:
-               #     failed_files.append({"file_id": file_id, "error": str(e)})
-
-            # 9. Response
-          #  return Response({
-          #      "message": "Restore process completed.",
-          #      "restored": restored_files,
-          #      "failed": failed_files
-         #   }, status=200)
-
-      #  except Exception as e:
-      #      return Response({"error": str(e)}, status=500)
 
 # File Restore API
 class RestoreFileView(APIView):
@@ -813,39 +739,75 @@ class RestoreFileView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
-  
 
-#@api_view(['DELETE'])
-#@permission_classes([IsAuthenticated])
-#def permanently_delete(request, id):
- #   deleted_file = get_object_or_404(DeletedFile, id=id)
-  #  deleted_file.delete()
-   # return Response({"message": "File permanently deleted."}, status=200)
 
 #permenently delete
 class PermanentlyDeleteFilesView(APIView):
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, *args, **kwargs):
-        file_id = kwargs.get('id')  # Get 'id' from the URL
-        if not file_id:
-            return Response({"error": "File ID is required."}, status=400)
+        try:
+            # Single file deletion by ID
+            file_id = kwargs.get('id')
+            if file_id:
+                # Check if file exists
+                deleted_file = get_object_or_404(DeletedFile, id=file_id, user_id=request.user.id)
 
-        deleted_files = DeletedFile.objects.filter(id=file_id, user_id=request.user.id)
-        if not deleted_files.exists():
-            return Response({"error": "No valid file found to delete."}, status=404)
+                # Remove the physical file from the file system
+                if os.path.exists(deleted_file.file):
+                    os.remove(deleted_file.file)  # Delete file from storage
 
-        deleted_files.delete()
-        return Response({"message": "File permanently deleted."}, status=200)
+                # Remove the record from DeletedFile table
+                deleted_file.delete()
+                return Response({"message": "File permanently deleted."}, status=200)
+
+            # Bulk deletion by IDs from request body
+            file_ids = request.data.get('file_ids', [])
+            if file_ids:
+                deleted_files = DeletedFile.objects.filter(id__in=file_ids, user_id=request.user.id)
+                if not deleted_files.exists():
+                    return Response({"error": "No valid files found to delete."}, status=404)
+
+                # Delete each file from storage
+                for file in deleted_files:
+                    if os.path.exists(file.file):
+                        os.remove(file.file)
+
+                # Delete records from DeletedFile table
+                deleted_files.delete()
+                return Response({"message": f"{len(file_ids)} files permanently deleted."}, status=200)
+
+            return Response({"error": "File ID(s) are required."}, status=400)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
 
 #empty bin
 class EmptyTrashView(APIView):
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, *args, **kwargs):
-        # Delete all the files in the trash for the authenticated user
-        DeletedFile.objects.filter(user_id=request.user.id).delete()
-        return Response({"message": "Trash emptied successfully."}, status=status.HTTP_200_OK)
+        try:
+            # Fetch all deleted files for the user
+            deleted_files = DeletedFile.objects.filter(user_id=request.user.id)
+            if not deleted_files.exists():
+                return Response({"message": "Trash is already empty."}, status=status.HTTP_200_OK)
+
+            # Remove files from the file system
+            for deleted_file in deleted_files:
+                if os.path.exists(deleted_file.file):
+                    os.remove(deleted_file.file)  # Physically delete the file
+
+            # Delete records from database
+            deleted_files.delete()
+
+            return Response({"message": "Trash emptied successfully."}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            # Catch any unexpected errors
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 # star file
 @api_view(['GET', 'POST'])
