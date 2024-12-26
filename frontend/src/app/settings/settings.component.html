@@ -1,39 +1,67 @@
-<h3>Change Password</h3>
-<form (submit)="changePassword()">
-  <div class="form-group">
-    <label for="oldPassword">Old Password:</label>
-    <input id="oldPassword" type="password" [(ngModel)]="passwordData.old_password" name="oldPassword" required />
+<div class="settings-container">
+  <!-- Change Password Section -->
+  <div class="settings-section">
+    <h3 class="section-title">Change Password</h3>
+    <form (submit)="changePassword()" class="settings-form">
+      <!-- Old Password -->
+      <div class="form-group">
+        <label for="oldPassword">Old Password:</label>
+        <input
+          id="oldPassword"
+          type="password"
+          [(ngModel)]="passwordData.old_password"
+          name="oldPassword"
+          required
+        />
+      </div>
+
+      <!-- New Password -->
+      <div class="form-group">
+        <label for="newPassword">New Password:</label>
+        <input
+          id="newPassword"
+          type="password"
+          [(ngModel)]="passwordData.new_password"
+          name="newPassword"
+          required
+        />
+      </div>
+
+      <!-- Confirm Password -->
+      <div class="form-group">
+        <label for="confirmPassword">Confirm Password:</label>
+        <input
+          id="confirmPassword"
+          type="password"
+          [(ngModel)]="passwordData.confirm_password"
+          name="confirmPassword"
+          required
+        />
+      </div>
+
+      <!-- Password Requirements -->
+      <div class="password-requirements">
+        <p class="requirements-title">Password Requirements:</p>
+        <ul class="requirements-list">
+          <li>At least 8 characters long</li>
+          <li>Should not be too similar to your username or email</li>
+          <li>Must contain at least 1 uppercase letter</li>
+          <li>Must include at least 1 number</li>
+          <li>Cannot be entirely numeric</li>
+        </ul>
+      </div>
+
+      <button type="submit" class="btn-save">Change Password</button>
+    </form>
   </div>
-  <div class="form-group">
-    <label for="newPassword">New Password:</label>
-    <input id="newPassword" type="password" [(ngModel)]="passwordData.new_password" name="newPassword" required />
+
+  <!-- Delete Account Section -->
+  <div class="settings-section danger-zone">
+    <h3 class="section-title">Delete Account</h3>
+    <p class="warning-text">
+      Warning: This action is irreversible and will delete all your data
+      associated with this account.
+    </p>
+    <button (click)="deleteAccount()" class="btn-delete">Delete Account</button>
   </div>
-  <div class="form-group">
-    <label for="confirmPassword">Confirm Password:</label>
-    <input id="confirmPassword" type="password" [(ngModel)]="passwordData.confirm_password" name="confirmPassword" required />
-  </div>
-
-  <!-- Password Requirements -->
-  <div class="password-requirements">
-    <p>Password Requirements:</p>
-    <ul>
-      <li>At least 8 characters long</li>
-      <li>Should not be too similar to your username or email</li>
-      <li>Must contain at least 1 uppercase letter</li>
-      <li>Must include at least 1 number</li>
-      <li>Cannot be entirely numeric</li>
-    </ul>
-  </div>
-
-
-  <button type="submit" class="btn-save">Change Password</button>
-</form>
-
-<!-- Delete Account Section -->
-<h3>Delete Account</h3>
-<p>
-  Warning: This action is irreversible and will delete all your data
-  associated with this account.
-</p>
-<button (click)="deleteAccount()" class="btn-delete">Delete Account</button>
-
+</div>

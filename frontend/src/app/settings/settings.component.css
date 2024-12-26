@@ -1,37 +1,113 @@
+/* General Settings Container */
+.settings-container {
+  max-width: 600px;
+  margin: 20px auto;
+  padding: 20px;
+  font-family: 'Arial', sans-serif;
+  background: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Sections */
+.settings-section {
+  margin-bottom: 20px;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: white;
+}
+
+.danger-zone {
+  border: 1px solid #dc3545;
+  background: #f8d7da;
+}
+
+/* Titles */
+.section-title {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+/* Form Groups */
 .form-group {
-  margin-bottom: 10px;
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
 }
 
 input {
   width: 100%;
-  padding: 8px;
-  margin-top: 5px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 14px;
+  transition: border-color 0.3s;
 }
 
+input:focus {
+  border-color: #007bff;
+  outline: none;
+}
+
+/* Buttons */
 .btn-save {
-  margin-top: 10px;
   padding: 10px 20px;
   background-color: #007bff;
   color: white;
   border: none;
+  border-radius: 5px;
   cursor: pointer;
+  transition: background-color 0.3s;
 }
 
 .btn-save:hover {
   background-color: #0056b3;
 }
 
-/* delete account */
 .btn-delete {
-  margin-top: 10px;
   padding: 10px 20px;
-  background-color: #dc3545; /* Red color for delete action */
+  background-color: #dc3545;
   color: white;
   border: none;
+  border-radius: 5px;
   cursor: pointer;
+  transition: background-color 0.3s;
 }
 
 .btn-delete:hover {
   background-color: #c82333;
 }
 
+/* Password Requirements */
+.password-requirements {
+  margin-top: 15px;
+  padding: 10px;
+  background: #e9ecef;
+  border-radius: 5px;
+}
+
+.requirements-title {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.requirements-list {
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Warning Text */
+.warning-text {
+  color: #721c24;
+  font-size: 14px;
+  margin-bottom: 15px;
+}

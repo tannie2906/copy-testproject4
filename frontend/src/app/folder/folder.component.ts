@@ -62,18 +62,6 @@ export class FolderComponent implements OnInit {
     }
   }
 
-  //fetchFiles(): void {
-    //this.fileService.getFolderFiles().subscribe({
-      //next: (data) => {
-        //console.log('API Response:', data); // Debug to ensure correct data structure
-        //this.files = data;
-      //},
-      //error: (error) => {
-        //console.error('Error fetching files:', error);
-      //},
-    //});
- // }
-
   // Handle file deletion
   onDelete(file: File, event?: Event): void {
     if (event) {
