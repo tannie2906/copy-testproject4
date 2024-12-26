@@ -34,6 +34,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.utils.timezone import now 
 from django.utils import timezone
 from django.utils.text import slugify
+from django.contrib.auth.password_validation import validate_password
 
 
 from .models import DeletedFile, UploadedFile, File, SharedFile, Profile
@@ -1033,4 +1034,54 @@ class FilePreviewView(APIView):
             logger.error(f"File preview error: {str(e)}", exc_info=True)
             return Response({"error": str(e)}, status=500)
 
+#change password
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def post(self, request):
+        user = request.user
+        data = request.data
+
+        # Get passwords from request
+        old_password = data.get("old_password")
+        new_password = data.get("new_password")
+        confirm_password = data.get("confirm_password")
+
+        # Check if old password is correct
+        if not user.check_password(old_password):
+            return Response({"error": "Old password is incorrect."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if new passwords match
+        if new_password != confirm_password:
+            return Response({"error": "New passwords do not match."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate new password
+        try:
+            validate_password(new_password, user=user)
+        except ValidationError as e:
+            return Response({"error": e.messages}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Set new password
+        user.set_password(new_password)
+        user.save()
+
+        return Response({"message": "Password changed successfully."}, status=status.HTTP_200_OK)
+
+#Delete Account
+class DeleteAccountView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request):
+        user = request.user
+
+        # Remove associated profile picture if exists
+        profile = user.profile  # Assuming User has a related Profile model
+        if profile.profile_picture:
+            profile_picture_path = profile.profile_picture.path
+            if os.path.exists(profile_picture_path):
+                os.remove(profile_picture_path)
+
+        # Delete the user and related data
+        user.delete()
+
+        return Response({"message": "Account deleted successfully"}, status=status.HTTP_200_OK)

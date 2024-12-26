@@ -15,6 +15,8 @@ from .views import (
     ShareFileView,
     FilePreviewView,
     FileMetadataView,
+    ChangePasswordView,
+    DeleteAccountView
 )
 
 router = DefaultRouter()
@@ -71,5 +73,7 @@ urlpatterns = [
     path('file-preview/<int:file_id>/', FilePreviewView.as_view(), name='file_preview'),
     path('file-metadata/<int:file_id>/', FileMetadataView.as_view(), name='file_metadata'),
 
-
+    #settings page
+    path('change-password/', ChangePasswordView.as_view(), name='change-password'),
+    path('delete-account/', DeleteAccountView.as_view(), name='delete-account'),
 ]

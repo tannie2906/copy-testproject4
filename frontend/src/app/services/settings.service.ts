@@ -74,4 +74,12 @@ export class SettingsService {
     //});
     return this.http.post('/api/upload-profile-picture/', file);
   }  
+
+  changePassword(data: any) { // Accepts 'data' as input
+    return this.http.post('/api/change-password/', data); // Makes HTTP POST request
+  }  
+  
+  deleteAccount() {
+    return this.http.delete('/api/delete-account/'); // DELETE request
+  }
 }
