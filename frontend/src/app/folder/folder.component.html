@@ -56,11 +56,11 @@
       </thead>
       <tbody>
         <tr *ngFor="let file of (showStarredFiles ? starredFiles : files)">
-          <!-- Modify this to use (click) instead of the direct anchor tag -->
-          <td>
-            <a href="#" (click)="onOpenFile(file, $event)">
-              {{ file.file_name }}
-            </a>
+        
+
+        <!-- File Name Click to Preview -->
+        <td>
+          <a [routerLink]="['/file-preview', file.id]">{{ file.file_name }}</a>
           </td>
           <td>{{ formatFileSize(file.size) }}</td>
           <td>Owner: {{ file.owner?.username }}</td>
@@ -91,9 +91,12 @@
   <button (click)="renameFile(selectedFileId)">Save</button>
   <button (click)="selectedFileId = null">Cancel</button>
 </div>
+
+
           </td>
         </tr>
       </tbody>
     </table>
   </section>
-</div>
+
+  

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders  } from '@angular/common/http';
-import { BehaviorSubject, catchError, Observable, of, tap } from 'rxjs';
+import { BehaviorSubject, catchError, Observable, of, tap, throwError } from 'rxjs';
 import { UserFile } from '../models/user-file.model';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../auth.service'; 
@@ -97,7 +97,6 @@ export class FileService {
     );
   }
 
-
   // Fetch deleted files
   getDeletedFiles(): Observable<any> {
     return this.http.get(`${this.apiUrl}/deleted-files/`, this.getHeaders()).pipe(
@@ -137,4 +136,18 @@ export class FileService {
       return of(result as T); // Return default result on error
     };
   }
+
+  //folder review
+  getFileMetadata(fileId: number): Observable<any> {
+    const url = `${this.apiUrl}/file-metadata/${fileId}/`;
+    return this.http.get(url).pipe(
+      catchError((error) => {
+        console.error('Error fetching file metadata:', error.message);
+        return throwError(() => error);
+      })
+    );
+}
+
+  
+  
 }  

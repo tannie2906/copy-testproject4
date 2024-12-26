@@ -21,6 +21,13 @@ export class FolderComponent implements OnInit {
   selectedFileId: number | null = null;
   newFileName: string = '';
 
+  //properties file preview
+  showPreview: boolean = false;
+  loading: boolean = false;
+  fileType: string = '';
+  previewUrl: string = '';
+  fileSize: string = '';
+
   // To track sort order for each column
   sortOrder: { [key: string]: 'asc' | 'desc' } = {
     name: 'asc',
@@ -397,5 +404,35 @@ export class FolderComponent implements OnInit {
     );
     const shareLink = response.data.share_link;
     alert(`Shareable link: ${shareLink}`);
+  }
+
+  //file review
+  // Helper function to format file size
+  formatBytes(bytes: number, decimals = 2): string {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  }
+
+  // Function to preview file metadata
+  previewFile(fileId: number): void {
+    this.loading = true; // Start loading indicator
+    this.fileService.getFileMetadata(fileId).subscribe(
+      (data) => {
+        this.previewUrl = data.url; // Set preview URL
+        this.fileType = data.type || 'application/octet-stream'; // Default MIME type
+        this.fileSize = this.formatBytes(data.size); // Format file size
+        this.showPreview = true; // Display the preview modal
+        this.loading = false; // Stop loading
+      },
+      (error: HttpErrorResponse) => {
+        console.error('Error fetching file preview:', error.message);
+        this.loading = false; // Stop loading on error
+      }
+    );
   }
 }

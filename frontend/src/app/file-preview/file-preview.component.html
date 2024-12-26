@@ -1,0 +1,53 @@
+<div *ngIf="loading" class="loading-spinner">
+    Loading...
+  </div>
+  
+  <div *ngIf="!loading" class="preview-container">
+    <h2>{{ fileName }}</h2>
+    <p>Type: {{ fileType }}</p>
+    <p>Size: {{ fileSize }}</p>
+  
+    <!-- Image Preview -->
+    <!-- Secure image preview -->
+    <!-- Display preview based on file type -->
+  <div *ngIf="fileType.startsWith('image/')">
+    <img
+      [src]="previewUrl + '?token=' + getAuthToken()"
+      alt="File Preview"
+      class="preview-image"
+    />
+  </div>
+
+  <div *ngIf="fileType === 'application/pdf'">
+    <iframe
+      [src]="previewUrl + '?token=' + getAuthToken()"
+      class="preview-frame"
+    ></iframe>
+  </div>
+
+  <div *ngIf="!fileType.startsWith('image/') && fileType !== 'application/pdf'">
+    <p>File preview is not available for this format.</p>
+  </div>
+
+  <a [href]="previewUrl + '?token=' + getAuthToken()" download class="download-btn">
+    Download File
+  </a>
+</div>
+  
+  
+    <!-- PDF Preview -->
+    <div *ngIf="fileType === 'application/pdf'">
+      <iframe [src]="previewUrl" class="pdf-preview"></iframe>
+    </div>
+  
+    <!-- Unsupported File -->
+    <div *ngIf="!fileType.startsWith('image/') && fileType !== 'application/pdf'">
+      <p>Preview not available for this file type.</p>
+    </div>
+  
+    <!-- Download Button -->
+    <a [href]="previewUrl" download>
+      <button>Download File</button>
+    </a>
+  
+  

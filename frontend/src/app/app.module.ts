@@ -18,7 +18,9 @@ import { HTTP_INTERCEPTORS } from '@angular/common/http';
 import { TokenInterceptor } from './token.interceptor';
 import { DeleteComponent } from './delete/delete.component';
 import { FolderService } from './folder.service';
-import { SearchComponent } from './search/search.component'; 
+import { SearchComponent } from './search/search.component';
+import { FilePreviewComponent } from './file-preview/file-preview.component'; 
+import { AuthService } from './auth.service';
 
 @NgModule({
   declarations: [
@@ -32,7 +34,8 @@ import { SearchComponent } from './search/search.component';
     FolderComponent,
     FileListComponent,
     DeleteComponent,
-    SearchComponent
+    SearchComponent,
+    FilePreviewComponent
   ],
   imports: [
     BrowserModule,
@@ -43,6 +46,7 @@ import { SearchComponent } from './search/search.component';
   providers: [
     FileService,
     FolderService,
+    AuthService,
     { 
       provide: HTTP_INTERCEPTORS, 
       useClass: TokenInterceptor, 

@@ -11,6 +11,7 @@ import { FolderComponent } from './folder/folder.component';
 import { DeleteComponent } from './delete/delete.component';
 import { AuthGuard } from './auth.guard';
 import { SearchComponent } from './search/search.component';
+import { FilePreviewComponent } from './file-preview/file-preview.component';
 
 
 const routes: Routes = [
@@ -25,6 +26,8 @@ const routes: Routes = [
   { path: 'search', component: SearchComponent },
   { path: 'delete', component: DeleteComponent, canActivate: [AuthGuard] }, // Add this route
   // { path: '', redirectTo: '/login', pathMatch: 'full' },  // Redirect to login by default
+  { path: 'file-preview/:id', component: FilePreviewComponent },
+  { path: '', component: FolderComponent }, 
 ];
 
 @NgModule({

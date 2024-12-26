@@ -1,4 +1,5 @@
 from datetime import timezone
+import mimetypes
 import re
 import shutil
 from rest_framework.views import APIView
@@ -782,7 +783,6 @@ class PermanentlyDeleteFilesView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
-
 #empty bin
 class EmptyTrashView(APIView):
     permission_classes = [IsAuthenticated]
@@ -990,3 +990,50 @@ class FileSearchView(generics.ListAPIView):
                 is_deleted=False
             ).order_by('-created_at')  # Explicit ordering by latest created_at
         return File.objects.none()
+
+#file preview
+class FileMetadataView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, file_id):
+        try:
+            file_instance = get_object_or_404(File, id=file_id, user_id=request.user.id)
+            file_path = file_instance.file.path
+            file_size = os.path.getsize(file_path)
+            file_type = mimetypes.guess_type(file_path)[0] or 'application/octet-stream'
+
+            return Response({
+                "file_name": file_instance.file_name,
+                "url": request.build_absolute_uri(file_instance.file.url),
+                "type": file_type,
+                "size": file_size,
+            }, status=200)
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
+class FilePreviewView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, file_id):
+        try:
+            file_instance = get_object_or_404(File, id=file_id, user_id=request.user.id)
+            file_path = file_instance.file.path
+
+            # Decrypt or Copy the file
+            decrypted_file_path = file_path + ".decrypted"
+            decrypt_file(file_path, decrypted_file_path)
+
+            # Serve the decrypted file
+            response = FileResponse(open(decrypted_file_path, 'rb'))
+            response['Content-Type'] = mimetypes.guess_type(decrypted_file_path)[0]
+            response['Content-Disposition'] = f'inline; filename="{file_instance.file_name}"'
+
+            # Cleanup
+            os.remove(decrypted_file_path)
+            return response
+
+        except Exception as e:
+            logger.error(f"File preview error: {str(e)}", exc_info=True)
+            return Response({"error": str(e)}, status=500)
+
+

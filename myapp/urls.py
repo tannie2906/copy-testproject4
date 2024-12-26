@@ -13,6 +13,8 @@ from .views import (
     RestoreFileView,
     DownloadFileView,
     ShareFileView,
+    FilePreviewView,
+    FileMetadataView,
 )
 
 router = DefaultRouter()
@@ -42,8 +44,7 @@ urlpatterns = [
     path('files/view/<int:file_id>/', FileView.as_view(), name='file-view'),
     path('files/starred/', views.starred_files, name='starred_files'),
     path('files/toggle-star/<int:id>/', views.toggle_star, name='toggle_star'),
-    #path('files/download/<int:file_id>/', download_file, name='download_file'),
-    #path('files/download/<int:file_id>/', DownloadFileAPIView.as_view(), name='download_file'),
+
 
     #path('delete/<int:id>/', DeletedFileDeleteView.as_view(), name='delete_file'),
     path('files/delete/<int:id>/', FileDeleteView.as_view(), name='delete_active_file'),
@@ -65,4 +66,10 @@ urlpatterns = [
     path('restore-files/', RestoreFileView.as_view(), name='restore-files'),
     path('download/<int:file_id>/', DownloadFileView.as_view(), name='download-file'),
     path('share/<int:file_id>/', ShareFileView.as_view(), name='share-file'),
+
+    #file review
+    path('file-preview/<int:file_id>/', FilePreviewView.as_view(), name='file_preview'),
+    path('file-metadata/<int:file_id>/', FileMetadataView.as_view(), name='file_metadata'),
+
+
 ]
