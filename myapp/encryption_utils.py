@@ -42,5 +42,7 @@ def decrypt_file(file_path):
 
     decrypted = fernet.decrypt(encrypted)
 
-    with open(file_path, 'wb') as dec_file:
+    temp_path = file_path + ".decrypted"
+    with open(temp_path, 'wb') as dec_file:
         dec_file.write(decrypted)
+

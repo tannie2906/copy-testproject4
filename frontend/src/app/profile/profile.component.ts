@@ -31,7 +31,10 @@ export class ProfileComponent implements OnInit {
   
         // Ensure 'profile_picture' exists in the response data
         if (this.profile.profile_picture) {
-          this.profile.picture = this.profile.profile_picture;
+          // Append base URL if the profile_picture is relative
+          this.profile.picture = this.profile.profile_picture.startsWith('http') 
+            ? this.profile.profile_picture
+            : `http://localhost:8000${this.profile.profile_picture}`;
         } else {
           this.profile.picture = this.defaultProfilePicture;
         }
@@ -76,7 +79,7 @@ export class ProfileComponent implements OnInit {
 
   saveChanges(): void {
     const updatedProfile = { ...this.profile };
-
+  
     // Update username, first name, and last name
     this.settingsService.updateProfile(updatedProfile).subscribe({
       next: () => {
@@ -88,13 +91,18 @@ export class ProfileComponent implements OnInit {
         console.error('Error updating profile:', err);
       },
     });
-
+  
     // Upload profile picture if a new file is selected
     if (this.selectedFile) {
-      this.settingsService.uploadProfilePicture(this.selectedFile).subscribe({
-        next: () => {
+      // Create FormData object for the file
+      const formData = new FormData();
+      formData.append('file', this.selectedFile);
+  
+      this.settingsService.uploadProfilePicture(formData).subscribe({
+        next: (response: any) => {
           console.log('Profile picture updated successfully!');
-          this.loadProfile();
+          this.profile.picture = response.profile_picture_url; // Update picture URL
+          this.selectedFile = null; // Clear selected file
         },
         error: (err) => {
           console.error('Error uploading profile picture:', err);
@@ -102,6 +110,7 @@ export class ProfileComponent implements OnInit {
       });
     }
   }
+  
 
   toggleEditMode(): void {
     this.isEditing = !this.isEditing;

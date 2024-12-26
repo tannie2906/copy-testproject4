@@ -740,8 +740,6 @@ class RestoreFileView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
-
-
 #permenently delete
 class PermanentlyDeleteFilesView(APIView):
     permission_classes = [IsAuthenticated]
@@ -950,22 +948,21 @@ class UploadProfilePictureView(APIView):
     parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request, *args, **kwargs):
-        print("Received request at UploadProfilePictureView")  # Debug message
-        print(f"Request FILES: {request.FILES}")
-        print(f"Request DATA: {request.data}")
-
         if 'file' not in request.FILES:
             return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
 
         profile_picture = request.FILES['file']
-        print(f"File name: {profile_picture.name}")
+        user_profile = request.user.profile
+        user_profile.profile_picture = profile_picture
+        user_profile.save()
 
-        # Get the user's profile (assuming the logged-in user has a profile model)
-        user_profile = request.user.profile  # Get the profile of the logged-in user
-        user_profile.profile_picture = profile_picture  # Save the uploaded picture
-        user_profile.save()  # Save to the database
+        # Generate the full URL for the uploaded profile picture
+        profile_picture_url = f"{settings.MEDIA_URL}{user_profile.profile_picture}"
 
-        return Response({"message": "Profile picture uploaded successfully"}, status=status.HTTP_200_OK)
+        return Response(
+            {"message": "Profile picture uploaded successfully", "profile_picture_url": profile_picture_url},
+            status=status.HTTP_200_OK
+        )
 
 # Define pagination first
 class FileSearchPagination(PageNumberPagination):

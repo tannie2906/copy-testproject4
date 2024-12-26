@@ -61,14 +61,17 @@ export class SettingsService {
   }
    
 
-  uploadProfilePicture(file: File): Observable<any> {
-    const formData = new FormData();
-    formData.append('file', file);
-    console.log('Uploading file:', file); // Log file details
-  
+  uploadProfilePicture(file: FormData): Observable<any> {
     const headers = new HttpHeaders({
-      Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+    'enctype': 'multipart/form-data'
     });
-    return this.http.post(`${this.baseUrl}/upload-profile-picture/`, formData, { headers });
+    //const formData = new FormData();
+    //formData.append('file', file);
+    //console.log('Uploading file:', file); // Log file details
+  
+    //const headers = new HttpHeaders({
+      //Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+    //});
+    return this.http.post('/api/upload-profile-picture/', file);
   }  
 }
