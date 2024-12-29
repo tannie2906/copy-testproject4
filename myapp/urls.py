@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import FileDeleteView, FileUploadView, FileListView, CustomAuthToken, ProfileView, RegisterUserView, FileViewSet, UploadProfilePictureView,  DeletedFilesView
+from .views import FileDeleteView, FileUploadView, FileListView, CustomAuthToken, FolderContentView, ProfileView, RegisterUserView, FileViewSet, UploadProfilePictureView,  DeletedFilesView
 from .views import FileViewSet
 from . import views
 from .views import FileView, RestoreFileView, PermanentlyDeleteFilesView, DeletedFileDeleteView
@@ -16,11 +16,15 @@ from .views import (
     FilePreviewView,
     FileMetadataView,
     ChangePasswordView,
-    DeleteAccountView
+    DeleteAccountView,
+    FolderView,
+    FolderListView,
+    FolderViewSet
 )
 
 router = DefaultRouter()
 router.register(r'files', FileViewSet, basename='file')
+router.register(r'folders', FolderViewSet)
 
 urlpatterns = [
     path('api/', include(router.urls)),
@@ -76,4 +80,14 @@ urlpatterns = [
     #settings page
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),
     path('delete-account/', DeleteAccountView.as_view(), name='delete-account'),
+
+    #path('folders/', views.FolderView.as_view(), name='folder-create'),
+    #path('folders/<int:folder_id>/', views.FolderContentView.as_view(), name='folder_list'),
+    #path('folders/<int:folder_id>/', views.FolderListView.as_view(), name='folder_list'),
+    #path('folders/', FolderListView.as_view(), name='folder-list'),
+  #  path('folders/<int:folder_id>/', views.FolderContentView.as_view(), name='folder_list'),
+    path('folders/', views.FolderListView.as_view(), name='folder-list'),  # GET
+    path('folders/create/', views.FolderView.as_view(), name='folder-create'),  # POST
+    path('folders/<int:folder_id>/', views.FolderContentView.as_view(), name='folder_list'),
+
 ]

@@ -135,7 +135,14 @@ CSRF_TRUSTED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 DEBUG_PROPAGATE_EXCEPTIONS = True
 
-CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+CORS_ALLOW_METHODS = [
+    "GET", 
+    "POST", 
+    "PUT", 
+    "DELETE", 
+    "OPTIONS",
+    "PATCH",
+    ]
 
 CORS_ALLOW_HEADERS = [
     'authorization',

@@ -19,6 +19,7 @@ export interface File {
   is_deleted?: boolean;
   deleted_at?: string;
   file_path: string;
+  modified: string;
 }
 
 @Injectable({
@@ -26,6 +27,7 @@ export interface File {
 })
 
 export class FileService {
+  
   private apiUrl = 'http://127.0.0.1:8000/api'; // Base URL for the API
   folderFiles: File[] = [];
   
@@ -51,8 +53,8 @@ export class FileService {
   }
 
   // Fetch all files
-  getFolderFiles(): Observable<File[]> {
-    return this.http.get<File[]>(`${this.apiUrl}/files/`, this.getHeaders()).pipe(
+  getFolderFiles(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/folders/`, this.getHeaders()).pipe(
       catchError(this.handleError('getFolderFiles', []))
     );
   }
@@ -146,8 +148,12 @@ export class FileService {
         return throwError(() => error);
       })
     );
-}
+  }
 
-  
-  
+  getFolderContents(folderId: number): Observable<any> {
+    const token = this.authService.getToken();
+    return this.http.get<any>(`${this.apiUrl}/folders/${folderId}/`, {
+      headers: { Authorization: `Token ${token}` },
+    });
+  }  
 }  

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import UploadedFile
-from .models import File
+from .models import File, Folder
 from .models import DeletedFile  
 from .models import Profile
 
@@ -72,3 +72,13 @@ class ProfileSerializer(serializers.ModelSerializer):
         representation['last_name'] = user.last_name
         representation['email'] = user.email
         return representation
+    
+class FolderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Folder
+        fields = ['id', 'name', 'parent_folder', 'user', 'created_at']
+        extra_kwargs = {
+            'user': {'read_only': True},  # User is read-only
+            'parent_folder': {'required': False, 'allow_null': True},  # Allow parent_folder to be null
+        }
+

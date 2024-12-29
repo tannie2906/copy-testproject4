@@ -35,10 +35,11 @@ from django.utils.timezone import now
 from django.utils import timezone
 from django.utils.text import slugify
 from django.contrib.auth.password_validation import validate_password
+from django.utils.decorators import method_decorator
 
 
-from .models import DeletedFile, UploadedFile, File, SharedFile, Profile
-from .serializers import DeletedFilesSerializer, UserSerializer, UploadedFileSerializer, UserRegistrationSerializer, FileSerializer, ProfilePictureSerializer, ProfileSerializer
+from .models import DeletedFile, UploadedFile, File, SharedFile, Profile, Folder
+from .serializers import DeletedFilesSerializer, UserSerializer, UploadedFileSerializer, UserRegistrationSerializer, FileSerializer, ProfilePictureSerializer, ProfileSerializer, FolderSerializer
 from myapp.models import File, DeletedFile
 from .encryption_utils import encrypt_file
 from .encryption_utils import decrypt_file
@@ -227,6 +228,23 @@ class FileListView(APIView):
         serializer = FileSerializer(files, many=True)
         return Response(serializer.data)
 
+class FolderListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # Fetch folders and files
+        folders = Folder.objects.filter(user_id=request.user.id)
+        files = File.objects.filter(user_id=request.user.id, is_deleted=False)
+
+        folder_serializer = FolderSerializer(folders, many=True)
+        file_serializer = FileSerializer(files, many=True)
+
+        # Combine both folders and files
+        return Response({
+            'folders': folder_serializer.data,
+            'files': file_serializer.data
+        })
+    
 # User Authentication
 class CustomAuthToken(APIView):
     permission_classes = [AllowAny]
@@ -1085,3 +1103,67 @@ class DeleteAccountView(APIView):
         user.delete()
 
         return Response({"message": "Account deleted successfully"}, status=status.HTTP_200_OK)
+
+#create folder    
+@method_decorator(csrf_exempt, name='dispatch')
+class FolderView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        print("Request Data:", request.data)  # Log incoming request data
+        serializer = FolderSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        print("Validation Errors:", serializer.errors)  # Log errors
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class FolderViewSet(viewsets.ModelViewSet):
+    queryset = Folder.objects.all()
+    serializer_class = FolderSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# views.py
+class FolderContentView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, folder_id):
+        # Filter folders by parent_folder_id and user
+        folders = Folder.objects.filter(parent_folder_id=folder_id, user=request.user)
+        # Filter files by folder_id, user, and is_deleted flag
+        files = File.objects.filter(folder_id=folder_id, user=request.user, is_deleted=False)
+
+        # Serialize the data
+        folder_serializer = FolderSerializer(folders, many=True)
+        file_serializer = FileSerializer(files, many=True)
+
+        # Return folders and files in the response
+        return Response({
+            'folders': folder_serializer.data,
+            'files': file_serializer.data
+        })
+    
+class FolderListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        # Fetch folders and files
+        folders = Folder.objects.filter(user=request.user)
+        files = File.objects.filter(user_id=request.user.id, is_deleted=False)
+
+        folder_serializer = FolderSerializer(folders, many=True)
+        file_serializer = FileSerializer(files, many=True)
+
+        # Combine both folders and files in one response
+        return Response({
+            'folders': folder_serializer.data,
+            'files': file_serializer.data
+        })
+
+

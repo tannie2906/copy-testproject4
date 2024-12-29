@@ -6,6 +6,8 @@
       Share and manage your files with top-notch security and simplicity.
     </p>
 
+    
+
     <!-- Create Button with Dropdown -->
     <div class="dropdown">
       <button class="dropdown-button">Create</button>
@@ -56,21 +58,39 @@
       </thead>
       <tbody>
         <tr *ngFor="let file of (showStarredFiles ? starredFiles : files)">
-        
+          <!-- File/Folder Name -->
+<td>
+  <!-- Folder -->
+  <div *ngIf="file.isFolder" (click)="onOpenFolder(file.id)">
+    <i class="fa fa-folder"></i>
+    <a>{{ file.name }}</a>
+  </div>
+  <!-- File -->
+  <div *ngIf="!file.isFolder">
+    <a [routerLink]="['/file-preview', file.id]">
+      <i class="fa fa-file"></i>
+      {{ file.name }}
+    </a>
+  </div>
+</td>
 
-        <!-- File Name Click to Preview -->
-        <td>
-          <a [routerLink]="['/file-preview', file.id]">{{ file.file_name }}</a>
-          </td>
-          <td>{{ formatFileSize(file.size) }}</td>
+          <!-- File Size -->
+          <td>{{ file.isFolder ? '--' : formatFileSize(file.size) }}</td>
+
+          <!-- Owner Information -->
           <td>Owner: {{ file.owner?.username }}</td>
+
+          <!-- Modified Date -->
           <td>{{ file.created_at | date: 'medium' }}</td>
-          <td>
+
+          <!-- Actions -->
+          <td class="actions">
+            <!-- Star Toggle -->
             <button (click)="toggleStar(file)" aria-label="Toggle star">
               <span [class]="file.isStarred ? 'starred-icon' : 'unstarred-icon'">★</span>
             </button>
-          </td>
-          <td class="actions">
+
+            <!-- Dropdown Menu -->
             <div class="dropdown">
               <button class="more-button" (click)="toggleDropdown(file)">⋮</button>
               <div
@@ -78,25 +98,22 @@
                 [ngClass]="{ 'adjust-position': file.adjustDropdown }"
                 *ngIf="file.showDropdown"
               >
-              <button (click)="renameFile(file.id)">Rename</button>
-              <button (click)="deleteFile(file.id)">Delete</button>
-              
-              <button (click)="downloadFile(file.id)">Download</button>
-              <button (click)="shareFile(file.id)">Share</button>
+                <button (click)="renameFile(file.id)">Rename</button>
+                <button (click)="deleteFile(file.id)">Delete</button>
+                <button (click)="downloadFile(file.id)">Download</button>
+                <button (click)="shareFile(file.id)">Share</button>
               </div>
             </div>
-            <!-- Rename Dialog -->
-<div *ngIf="selectedFileId">
-  <input type="text" [(ngModel)]="newFileName" placeholder="Enter new name" />
-  <button (click)="renameFile(selectedFileId)">Save</button>
-  <button (click)="selectedFileId = null">Cancel</button>
-</div>
-
-
           </td>
         </tr>
       </tbody>
     </table>
   </section>
 
-  
+  <!-- Rename Dialog -->
+  <div *ngIf="selectedFileId">
+    <input type="text" [(ngModel)]="newFileName" placeholder="Enter new name" />
+    <button (click)="renameFile(selectedFileId)">Save</button>
+    <button (click)="selectedFileId = null">Cancel</button>
+  </div>
+</div>

@@ -1,11 +1,12 @@
 import { Component, OnInit } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../auth.service';
 import { FileService, File } from '../services/file.service';
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { UserFile } from '../models/user-file.model'; 
 import axios from 'axios';
+
 
 @Component({
   selector: 'app-folder',
@@ -20,6 +21,7 @@ export class FolderComponent implements OnInit {
   starredFiles: any[] = []; // Holds starred files
   selectedFileId: number | null = null;
   newFileName: string = '';
+  apiUrl: string = 'http://127.0.0.1:8000/api';
 
   //properties file preview
   showPreview: boolean = false;
@@ -48,6 +50,7 @@ export class FolderComponent implements OnInit {
     // Check if the user is authenticated by checking the token in AuthService
     this.isAuthenticated = !!this.authService.getToken();
     this.fetchFiles();          // Loads all files
+    this.fetchFilesAndFolders(); 
     this.fetchStarredFiles(); 
     
     if (!this.isAuthenticated) {
@@ -61,6 +64,18 @@ export class FolderComponent implements OnInit {
       this.errorMessage = 'You are not authenticated. Please log in.';
     }
   }
+
+  getHeaders() {
+    const token = this.authService.getToken();
+    return {
+      headers: new HttpHeaders({
+        'Authorization': `Token ${token}`,
+        'Content-Type': 'application/json',  // Ensure Content-Type is application/json
+      }),
+    };
+  }
+  
+  
 
   // Handle file deletion
   onDelete(file: File, event?: Event): void {
@@ -219,9 +234,34 @@ export class FolderComponent implements OnInit {
     throw new Error('Method not implemented.');
   }
 
-  onCreateFolder() {
-    throw new Error('Method not implemented.');
+  onCreateFolder(parentFolderId: number | null = null): void {
+    const folderName = prompt('Enter folder name:');
+    if (!folderName || folderName.trim() === '') {
+      alert('Folder name cannot be empty.');
+      return;
+    }
+  
+    const payload = { 
+      name: folderName.trim(),
+      parent_folder: parentFolderId ?? null // Use null if undefined
+    };
+    
+    
+
+    console.log('Folder Payload:', payload);
+    this.http.post(`${this.apiUrl}/folders/create/`, payload, this.getHeaders())
+      .subscribe({
+        next: () => {
+          alert('Folder created successfully!');
+          this.fetchFilesAndFolders(); // Refresh files and folders together
+      },
+      error: (error) => {
+        console.error('Error creating folder:', error);
+        alert('Failed to create folder. Please try again.');
+      },
+    });
   }
+  
 
   // Fetch files using the service
   getStarredFiles(): void {
@@ -312,13 +352,83 @@ export class FolderComponent implements OnInit {
     window.open(fileUrl, '_blank');
   }
 
+  //open folder
+  onOpenFolder(folderId: number): void {
+    this.fileService.getFolderContents(folderId).subscribe({
+      next: (data) => {
+        const folders = data.folders.map((folder: any) => ({
+          id: folder.id,
+          name: folder.name,
+          type: 'folder', // Add type to identify folder
+          modified: folder.created_at,
+        }));
+  
+        const files = data.files.map((file: any) => ({
+          id: file.id,
+          name: file.file_name,
+          size: file.size,
+          type: 'file', // Add type to identify file
+          modified: file.upload_date,
+        }));
+  
+        // Combine folders and files
+        this.files = [...folders, ...files];
+      },
+      error: (error) => {
+        console.error('Error fetching folder contents:', error);
+      },
+    });
+  }
+  
   async fetchFiles() {
     const token = this.authService.getToken();
     const response = await axios.get('http://127.0.0.1:8000/api/files/', {
       headers: { Authorization: `Token ${token}` },
     });
-    this.files = response.data;
+  
+    this.files = response.data.map((file: File) => ({
+      id: file.id,
+      name: file.filename, // Correct reference
+      size: file.size,
+      modified: file.modified,
+    }));
   }
+
+  async fetchFilesAndFolders() {
+    const token = this.authService.getToken();
+  
+    try {
+      const response = await axios.get(`${this.apiUrl}/folders/`, {
+        headers: { Authorization: `Token ${token}` },
+      });
+  
+      const data = response.data;
+  
+      // Combine folders and files
+      const folders = data.folders.map((folder: any) => ({
+        id: folder.id,
+        name: folder.name,
+        type: 'folder', // Add type for folders
+        modified: folder.created_at,
+      }));
+  
+      const files = data.files.map((file: any) => ({
+        id: file.id,
+        name: file.file_name, // Adjust field to match backend
+        size: file.size,
+        type: 'file', // Add type for files
+        modified: file.modified,
+      }));
+  
+      // Merge folders and files into the table
+      this.files = [...folders, ...files];
+    } catch (error) {
+      console.error('Error fetching folders and files:', error);
+    }
+  }
+  
+  
+  
 
   async renameFile(fileId: number) {
     const token = this.authService.getToken();

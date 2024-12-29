@@ -98,3 +98,14 @@ class DeletedFile(models.Model):
 
     def __str__(self):
         return self.file_name
+
+
+
+class Folder(models.Model):
+    name = models.CharField(max_length=255)
+    parent_folder = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)  # This creates 'user_id' automatically
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
