@@ -1,11 +1,12 @@
-import { Component, OnInit } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
+import { HttpClient, HttpEventType, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../auth.service';
 import { FileService, File } from '../services/file.service';
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { UserFile } from '../models/user-file.model'; 
 import axios from 'axios';
+import { UploadService } from  '../services/upload.service';
 
 
 @Component({
@@ -22,6 +23,13 @@ export class FolderComponent implements OnInit {
   selectedFileId: number | null = null;
   newFileName: string = '';
   apiUrl: string = 'http://127.0.0.1:8000/api';
+  uploadDropdownVisible: boolean = false;
+  uploading = false;      // Track if upload is in progress
+  progress: number | null = null;  // Track progress
+
+   // Get references to file inputs
+   @ViewChild('fileInput') fileInput!: ElementRef;
+   @ViewChild('folderInput') folderInput!: ElementRef;
 
   //properties file preview
   showPreview: boolean = false;
@@ -38,18 +46,21 @@ export class FolderComponent implements OnInit {
   };
 
   isAuthenticated: boolean = false;
+  folders: any;
+  currentFolderId: string | undefined;
 
   constructor(
     private http: HttpClient,
     private authService: AuthService,
     private fileService: FileService,
     private router: Router,
+    private uploadService: UploadService,
   ) {}
 
   ngOnInit(): void {
     // Check if the user is authenticated by checking the token in AuthService
     this.isAuthenticated = !!this.authService.getToken();
-    this.fetchFiles();          // Loads all files
+    //this.fetchFiles();          // Loads all files
     this.fetchFilesAndFolders(); 
     this.fetchStarredFiles(); 
     
@@ -59,7 +70,7 @@ export class FolderComponent implements OnInit {
 
     // Fetch all files only if authenticated
     if (this.isAuthenticated) {
-      this.fetchFiles(); 
+      this.fetchFilesAndFolders(); 
     } else {
       this.errorMessage = 'You are not authenticated. Please log in.';
     }
@@ -74,8 +85,6 @@ export class FolderComponent implements OnInit {
       }),
     };
   }
-  
-  
 
   // Handle file deletion
   onDelete(file: File, event?: Event): void {
@@ -89,7 +98,7 @@ export class FolderComponent implements OnInit {
         this.fileService.deleteFile(file.id, isDeleted).subscribe({
           next: () => {
               alert('File deleted successfully.');
-              this.fetchFiles(); // Refresh the file list
+              this.fetchFilesAndFolders(); // Refresh the file list
           },
           error: (error) => {
               alert('Failed to delete file: ' + (error.error.message || 'Unknown error.'));
@@ -126,7 +135,7 @@ export class FolderComponent implements OnInit {
     }
   }
 
-  // Toggle dropdown visibility for a file
+  // Toggle dropdown visibility for a specific file
   toggleDropdown(file: any): void {
     file.showDropdown = !file.showDropdown;
   }
@@ -222,14 +231,76 @@ export class FolderComponent implements OnInit {
     this.router.navigate(['/upload']);  // Routes to the upload page (similar to the HomeComponent)
   }
 
-  onUploadClick(): void {
-    if (this.isAuthenticated) {
-      this.router.navigate(['/upload']);
-    } else {
-      this.router.navigate(['/login']);
-    }
+   // Toggle upload dropdown
+   toggleUploadDropdown(): void {
+    this.uploadDropdownVisible = !this.uploadDropdownVisible;
   }
 
+   // Trigger file input click for files
+   onFileUploadClick(): void {
+    this.fileInput.nativeElement.click();
+  }
+
+  // Trigger file input click for folders
+  onFolderUploadClick(): void {
+    this.folderInput.nativeElement.click();
+  }
+
+  // Handle File Upload (when selecting a file)
+  onUploadFile(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files) {
+      const files = Array.from(input.files); // Convert FileList to File[]
+      this.uploading = true;
+      this.uploadService.uploadFiles(files).subscribe(
+        (event) => {
+          if (event.type === HttpEventType.UploadProgress) {
+            this.progress = Math.round((100 * event.loaded) / (event.total || 1));
+          } else if (event.type === HttpEventType.Response) {
+            console.log('File uploaded successfully:', event.body);
+            this.uploading = false;
+            this.progress = null;
+          }
+        },
+        (error) => {
+          console.error('Error uploading file:', error);
+          this.uploading = false;
+          this.progress = null;
+        }
+      );
+    }
+  }
+  
+
+  // Handle Folder Upload (when selecting a folder)
+  onUploadFolder(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files) {
+      const files = Array.from(input.files); // Convert FileList to File[]
+      console.log('Files to upload:', files);
+  
+      this.uploading = true;
+      this.uploadService.uploadFiles(files).subscribe(
+        (event) => {
+          if (event.type === HttpEventType.UploadProgress) {
+            this.progress = Math.round((100 * event.loaded) / (event.total || 1));
+          } else if (event.type === HttpEventType.Response) {
+            console.log('Folder uploaded successfully:', event.body);
+            this.uploading = false;
+            this.progress = null;
+          }
+        },
+        (error) => {
+          console.error('Error uploading folder:', error);
+          this.uploading = false;
+          this.progress = null;
+        }
+      );
+    }
+  }
+  
+
+  
   onCreateDocument() {
     throw new Error('Method not implemented.');
   }
@@ -243,17 +314,13 @@ export class FolderComponent implements OnInit {
   
     const payload = { 
       name: folderName.trim(),
-      parent_folder: parentFolderId ?? null // Use null if undefined
+      parent_folder: parentFolderId ?? null // Null if no parent
     };
-    
-    
-
-    console.log('Folder Payload:', payload);
-    this.http.post(`${this.apiUrl}/folders/create/`, payload, this.getHeaders())
-      .subscribe({
-        next: () => {
-          alert('Folder created successfully!');
-          this.fetchFilesAndFolders(); // Refresh files and folders together
+  
+    this.fileService.createFolder(payload).subscribe({
+      next: () => {
+        alert('Folder created successfully!');
+        this.loadFolderContents(parentFolderId); // Reload contents
       },
       error: (error) => {
         console.error('Error creating folder:', error);
@@ -261,8 +328,43 @@ export class FolderComponent implements OnInit {
       },
     });
   }
-  
 
+  loadFolderContents(folderId: number | null = null): void {
+    const id = folderId ?? 0; // Default to 0 if null
+    this.fileService.getFolderContents(id).subscribe(
+      (data) => {
+        // Process folders
+        const folders = data.folders.map((folder: any) => ({
+          id: folder.id,
+          name: folder.name,
+          type: 'folder', // Explicitly mark as folder
+          parentFolder: folder.parent_folder,
+          createdAt: folder.created_at,
+        }));
+  
+        // Process files
+        const files = data.files.map((file: any) => ({
+          id: file.id,
+          name: file.file_name,
+          size: file.size,
+          type: 'file', // Explicitly mark as file
+          createdAt: file.created_at,
+        }));
+  
+        // Combine folders and files for display
+        this.files = [...folders, ...files].map((item) => ({
+          ...item,
+          type: item.type || (item.id ? 'folder' : 'file')  // Default to 'folder' if not explicitly a file
+        }));
+        
+      },
+      (error) => {
+        console.error('Error fetching folder contents:', error);
+      }
+    );
+  }
+  
+  
   // Fetch files using the service
   getStarredFiles(): void {
     this.fileService.getStarredFiles().subscribe({
@@ -322,7 +424,6 @@ export class FolderComponent implements OnInit {
     }
   }
   
-
   loadFiles(): void {
     this.fileService.getFiles().subscribe(
       (files) => {
@@ -353,83 +454,66 @@ export class FolderComponent implements OnInit {
   }
 
   //open folder
-  onOpenFolder(folderId: number): void {
-    this.fileService.getFolderContents(folderId).subscribe({
-      next: (data) => {
-        const folders = data.folders.map((folder: any) => ({
-          id: folder.id,
-          name: folder.name,
-          type: 'folder', // Add type to identify folder
-          modified: folder.created_at,
-        }));
+  onOpenFolder(folderId: string): void {
+    // Find the folder and load its contents.
+    const folder = this.files.find(file => file.id === folderId && file.isFolder);
   
-        const files = data.files.map((file: any) => ({
-          id: file.id,
-          name: file.file_name,
-          size: file.size,
-          type: 'file', // Add type to identify file
-          modified: file.upload_date,
-        }));
-  
-        // Combine folders and files
-        this.files = [...folders, ...files];
-      },
-      error: (error) => {
-        console.error('Error fetching folder contents:', error);
-      },
-    });
+    if (folder) {
+      // You might need to set a `currentFolder` property and load its children.
+      this.currentFolderId = folderId;
+      this.files = folder.contents || []; // Assume `contents` contains the child files/folders.
+    }
   }
   
-  async fetchFiles() {
-    const token = this.authService.getToken();
-    const response = await axios.get('http://127.0.0.1:8000/api/files/', {
-      headers: { Authorization: `Token ${token}` },
-    });
   
-    this.files = response.data.map((file: File) => ({
-      id: file.id,
-      name: file.filename, // Correct reference
-      size: file.size,
-      modified: file.modified,
-    }));
-  }
+  
+  //async fetchFiles() {
+    //const token = this.authService.getToken();
+    //const response = await axios.get('http://127.0.0.1:8000/api/files/', {
+     // headers: { Authorization: `Token ${token}` },
+    //});
+  
+    //this.files = response.data.map((file: File) => ({
+      //id: file.id,
+      //name: file.filename, // Correct reference
+      //size: file.size,
+      //modified: file.modified,
+    //}));
+  //}
 
   async fetchFilesAndFolders() {
     const token = this.authService.getToken();
-  
     try {
       const response = await axios.get(`${this.apiUrl}/folders/`, {
         headers: { Authorization: `Token ${token}` },
       });
-  
       const data = response.data;
   
-      // Combine folders and files
+      // Process folders
       const folders = data.folders.map((folder: any) => ({
         id: folder.id,
         name: folder.name,
-        type: 'folder', // Add type for folders
+        type: 'folder', // Explicitly mark as folder
+        parentFolder: folder.parent_folder,
         modified: folder.created_at,
       }));
   
+      // Process files
       const files = data.files.map((file: any) => ({
         id: file.id,
         name: file.file_name, // Adjust field to match backend
         size: file.size,
-        type: 'file', // Add type for files
-        modified: file.modified,
+        type: 'file', // Explicitly mark as file
+        modified: file.created_at,
       }));
   
-      // Merge folders and files into the table
+      // Merge folders and files into a single list
       this.files = [...folders, ...files];
     } catch (error) {
       console.error('Error fetching folders and files:', error);
     }
   }
   
-  
-  
-
   async renameFile(fileId: number) {
     const token = this.authService.getToken();
   
@@ -459,7 +543,7 @@ export class FolderComponent implements OnInit {
     );
   
     alert('File renamed successfully!');
-    this.fetchFiles(); // Refresh files
+    this.fetchFilesAndFolders(); // Refresh files
   }
   
   async deleteFile(fileId: number) {
@@ -472,7 +556,7 @@ export class FolderComponent implements OnInit {
       }
     );
     alert('File moved to trash.');
-    this.fetchFiles();
+    this.fetchFilesAndFolders();
   }
   async downloadFile(fileId: number) {
     const token = this.authService.getToken();
@@ -505,7 +589,6 @@ export class FolderComponent implements OnInit {
   }
 
   //file review
-  // Helper function to format file size
   formatBytes(bytes: number, decimals = 2): string {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;

@@ -21,6 +21,8 @@ import { FolderService } from './folder.service';
 import { SearchComponent } from './search/search.component';
 import { FilePreviewComponent } from './file-preview/file-preview.component'; 
 import { AuthService } from './auth.service';
+import { FormatBytesPipe } from './format-bytes.pipe';
+
 
 @NgModule({
   declarations: [
@@ -35,7 +37,8 @@ import { AuthService } from './auth.service';
     FileListComponent,
     DeleteComponent,
     SearchComponent,
-    FilePreviewComponent
+    FilePreviewComponent,
+    FormatBytesPipe
   ],
   imports: [
     BrowserModule,

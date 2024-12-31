@@ -6,8 +6,6 @@
       Share and manage your files with top-notch security and simplicity.
     </p>
 
-    
-
     <!-- Create Button with Dropdown -->
     <div class="dropdown">
       <button class="dropdown-button">Create</button>
@@ -18,8 +16,45 @@
     </div>
 
     <!-- Upload Button -->
-    <button class="cta-button" (click)="onUploadClick()">Upload</button>
-  </section>
+     <!-- Upload Button -->
+<div class="dropdown">
+  <button class="dropdown-button" (click)="toggleUploadDropdown()">Upload</button>
+  <div class="dropdown-content" *ngIf="uploadDropdownVisible">
+    <!-- File Button -->
+    <label class="dropdown-item" for="file-upload">
+      File
+    </label>
+    <input
+      id="file-upload"
+      type="file"
+      multiple
+      (change)="onUploadFile($event)"
+      style="display: none;"
+    />
+
+    <!-- Folder Button -->
+    <label class="dropdown-item" for="folder-upload">
+      Folder
+    </label>
+    <input
+      id="folder-upload"
+      type="file"
+      webkitdirectory
+      mozdirectory
+      (change)="onUploadFolder($event)"
+      style="display: none;"
+    />
+  </div>
+</div>
+
+
+
+
+
+     <!-- start here -->
+  
+     
+    <!-- delete here -->
 
   <!-- Starred Files Button -->
   <div class="files-header">
@@ -57,22 +92,20 @@
         </tr>
       </thead>
       <tbody>
+
         <tr *ngFor="let file of (showStarredFiles ? starredFiles : files)">
-          <!-- File/Folder Name -->
-<td>
-  <!-- Folder -->
-  <div *ngIf="file.isFolder" (click)="onOpenFolder(file.id)">
-    <i class="fa fa-folder"></i>
-    <a>{{ file.name }}</a>
-  </div>
-  <!-- File -->
-  <div *ngIf="!file.isFolder">
-    <a [routerLink]="['/file-preview', file.id]">
-      <i class="fa fa-file"></i>
-      {{ file.name }}
-    </a>
-  </div>
-</td>
+          <!-- Folder -->
+          <div *ngIf="file.isFolder" (click)="onOpenFolder(file.id)">
+            <i class="fa fa-folder"></i>
+            <a>{{ file.name }}</a>
+          </div>
+          <!-- File -->
+          <div *ngIf="!file.isFolder">
+            <a (click)="onOpenFile(file, $event)">
+              <i class="fa fa-file"></i>
+              {{ file.name }}
+            </a>
+          </div>
 
           <!-- File Size -->
           <td>{{ file.isFolder ? '--' : formatFileSize(file.size) }}</td>
@@ -116,4 +149,14 @@
     <button (click)="renameFile(selectedFileId)">Save</button>
     <button (click)="selectedFileId = null">Cancel</button>
   </div>
-</div>
+
+  <!-- process uploads-->
+  <div *ngIf="uploading">
+    <p>Uploading...</p>
+    <div *ngIf="progress !== null">
+      <progress [value]="progress" max="100"></progress>
+      <p>{{ progress }}%</p>
+    </div>
+  </div>
+  
+

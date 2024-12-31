@@ -12,7 +12,7 @@ export interface File {
   filename: string; 
   file_name: string;
   size: number;
-  type?: string; // Optional if not provided
+  type?: string; 
   upload_date: string;
   path: string;
   created_at: string;
@@ -27,7 +27,6 @@ export interface File {
 })
 
 export class FileService {
-  
   private apiUrl = 'http://127.0.0.1:8000/api'; // Base URL for the API
   folderFiles: File[] = [];
   
@@ -42,6 +41,14 @@ export class FileService {
     };
   }
 
+  // Error handling utility
+  private handleError<T>(operation = 'operation', result?: T) {
+    return (error: HttpErrorResponse): Observable<T> => {
+      console.error(`${operation} failed: ${error.message}`);
+      return of(result as T); // Return default result on error
+    };
+  }
+
   // Fetch all user files
   getFiles(): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/files/`).pipe(
@@ -52,17 +59,12 @@ export class FileService {
     );
   }
 
-  // Fetch all files
+  // Fetch all folders
   getFolderFiles(): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/folders/`, this.getHeaders()).pipe(
       catchError(this.handleError('getFolderFiles', []))
     );
   }
-  
-  // Get URL for a specific file
-  getFileUrl(fileName: string): Observable<{ fileUrl: string }> {
-    return this.http.get<{ fileUrl: string }>(`${this.apiUrl}/files/${fileName}`, this.getHeaders());
-  }  
 
   // Rename file
   renameFile(fileId: number, newName: string) {
@@ -87,6 +89,12 @@ export class FileService {
       }
     );
   } 
+  
+  // Get URL for a specific file
+  getFileUrl(fileName: string): Observable<{ fileUrl: string }> {
+    return this.http.get<{ fileUrl: string }>(`${this.apiUrl}/files/${fileName}`, this.getHeaders());
+  }  
+
 
   // delete method 
   deleteFile(fileId: number, isDeleted: boolean = false): Observable<any> {
@@ -131,14 +139,6 @@ export class FileService {
     return this.http.get(searchUrl);
   }
 
-  // Error handling utility
-  private handleError<T>(operation = 'operation', result?: T) {
-    return (error: HttpErrorResponse): Observable<T> => {
-      console.error(`${operation} failed: ${error.message}`);
-      return of(result as T); // Return default result on error
-    };
-  }
-
   //folder review
   getFileMetadata(fileId: number): Observable<any> {
     const url = `${this.apiUrl}/file-metadata/${fileId}/`;
@@ -155,5 +155,12 @@ export class FileService {
     return this.http.get<any>(`${this.apiUrl}/folders/${folderId}/`, {
       headers: { Authorization: `Token ${token}` },
     });
-  }  
+  }
+  
+
+  
+  // Create Folder
+createFolder(folderData: any): Observable<any> {
+  return this.http.post(`${this.apiUrl}/folders/`, folderData, this.getHeaders());
+} 
 }  

@@ -17,6 +17,29 @@ class FileSerializer(serializers.ModelSerializer):
         model = File
         fields = ['id', 'file_name', 'file', 'size', 'user_id', 'created_at', 'is_deleted', 'deleted_at', 'file_path']
 
+class FolderSerializer(serializers.ModelSerializer):
+    subfolders = serializers.SerializerMethodField()
+    files = FileSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Folder
+        fields = ['id', 'name', 'path', 'parent_folder', 'subfolders', 'files']
+
+    def get_subfolders(self, obj):
+        return FolderSerializer(obj.subfolders.all(), many=True).data
+    
+class UploadedFileSerializer(serializers.ModelSerializer):
+    size = serializers.SerializerMethodField()  # Add size field
+    owner = UserSerializer()  # Include owner details using the UserSerializer
+
+    class Meta:
+        model = UploadedFile
+        fields = ['id', 'file_name', 'file', 'upload_date', 'size', 'owner']
+
+    def get_size(self, obj):
+        return obj.file.size  # Get the file size in bytes
+
+
 class UserRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -31,17 +54,6 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             last_name=validated_data.get('last_name', '') 
         )
         return user
-
-class UploadedFileSerializer(serializers.ModelSerializer):
-    size = serializers.SerializerMethodField()  # Add size field
-    owner = UserSerializer()  # Include owner details using the UserSerializer
-
-    class Meta:
-        model = UploadedFile
-        fields = ['id', 'file_name', 'file', 'upload_date', 'size', 'owner']
-
-    def get_size(self, obj):
-        return obj.file.size  # Get the file size in bytes
 
 class DeletedFilesSerializer(serializers.ModelSerializer):
     class Meta:
@@ -73,12 +85,7 @@ class ProfileSerializer(serializers.ModelSerializer):
         representation['email'] = user.email
         return representation
     
-class FolderSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Folder
-        fields = ['id', 'name', 'parent_folder', 'user', 'created_at']
-        extra_kwargs = {
-            'user': {'read_only': True},  # User is read-only
-            'parent_folder': {'required': False, 'allow_null': True},  # Allow parent_folder to be null
-        }
+
+
+
 

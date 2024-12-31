@@ -11,103 +11,110 @@ import axios, { AxiosError } from 'axios';
 export class UploadComponent {
   selectedFiles: File[] = [];
   fileName: string = ''; // Variable for custom file name
+  folderName: string[] = [];
+
 
   @Output() fileUploaded = new EventEmitter<void>();
 
   constructor(private fileService: FileService, private authService: AuthService) {}
 
-  // Handle file selection
-  onFileSelected(event: any): void {
-    this.selectedFiles = Array.from(event.target.files);
+   // Handle folder selection
+
+   async onFolderSelected(event: any): Promise<void> {
+    const items = event.target.files;
+    for (const item of items) {
+      const file = item;
+      const relativePath = file.webkitRelativePath || file.name;
+      this.selectedFiles.push(file);
+  
+      // Extract folder hierarchy
+      const folderPath = relativePath.substring(0, relativePath.lastIndexOf('/'));
+      if (folderPath && !this.folderName.includes(folderPath)) {
+        this.folderName.push(folderPath);
+      }
+    }
+    console.log('Detected folders:', this.folderName);
   }
+  
+   
+  
+    
+   
+  
 
   // Handle file drop
-  onDrop(event: DragEvent): void {
+  async onDrop(event: DragEvent): Promise<void> {
     event.preventDefault();
-    if (event.dataTransfer && event.dataTransfer.files) {
-      this.selectedFiles = Array.from(event.dataTransfer.files);
+    
+    if (event.dataTransfer?.items) {
+      // Convert DataTransferItemList to an array
+      const items = Array.from(event.dataTransfer.items);
+  
+      for (const item of items) {
+        const entry = item.webkitGetAsEntry(); // Access file or directory entry
+        if (entry && entry.isFile) {
+          const file = item.getAsFile();
+          if (file) this.selectedFiles.push(file);
+        }
+      }
     }
   }
+  
 
-  // Prevent default behavior on drag over
-  onDragOver(event: DragEvent): void {
-    event.preventDefault();
-  }
-
-  // Upload files
   async uploadFiles(): Promise<void> {
-    if (this.selectedFiles.length === 0) {
-      alert('No files selected.');
+    if (this.selectedFiles.length === 0 && this.folderName.length === 0) {
+      alert('No files or folders selected.');
       return;
     }
-  
-    const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf'];
-    const maxSize = 5 * 1024 * 1024; // 5 MB
   
     const token = this.authService.getToken();
     if (!token) {
-      alert('You are not authenticated. Please log in first.');
+      alert('Authentication required. Please log in.');
       return;
     }
   
+    const formData = new FormData();
+  
+    // Add folders if selected
+    for (const folder of this.folderName) {
+      formData.append('folders[]', folder); // Append folders as array elements
+    }
+    
+  
+    // Attach files
     for (const file of this.selectedFiles) {
-      const fileExt = file.name.split('.').pop()?.toLowerCase();
-      if (!allowedExtensions.includes(fileExt || '')) {
-        alert(`Invalid file type: ${file.name}`);
-        continue;
-      }
+      const relativePath = file.webkitRelativePath || file.name;
+      formData.append('files', file);
+      formData.append(`relative_path_${file.name}`, relativePath);
+    }
   
-      if (file.size > maxSize) {
-        alert(`File size exceeds limit (5MB): ${file.name}`);
-        continue;
-      }
+    try {
+      const response = await axios.post('http://127.0.0.1:8000/api/upload/', formData, {
+        headers: {
+          Authorization: `Token ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
   
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('name', this.fileName);
-  
-      try {
-        const response = await axios.post('http://127.0.0.1:8000/api/upload/', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            Authorization: `Token ${token}`,
-          },
-          onUploadProgress: (progressEvent) => {
-            if (progressEvent.loaded && progressEvent.total) {
-              const progress = Math.round((progressEvent.loaded / progressEvent.total) * 100);
-              console.log(`Upload Progress: ${progress}%`);
-            }
-          },
-        });
-  
-        console.log('Upload successful:', response.data);
-        this.fileUploaded.emit();
-        alert('File uploaded successfully!');
-      } catch (error) {
-        console.error('Upload failed:', error);
-        alert('File upload failed. Try again.');
-      }
+      console.log('Upload successful:', response.data);
+      this.fileUploaded.emit();
+      alert('Files and folders uploaded successfully!');
+    } catch (error) {
+      console.error('Upload failed:', error);
+      alert('Upload failed. Please try again.');
     }
   
     this.selectedFiles = [];
-    this.fileName = '';
-  
-  
-    } //catch (error: AxiosError<unknown, any>) {
-      // Handle errors during the upload
-      //const axiosError = error as AxiosError;
-      //if (axiosError.response) {
-       // console.error('Error uploading file:', axiosError.response.data);
-        //if (axiosError.response.status === 403) {
-         // alert('You do not have permission to upload files.');
-        //} else if (axiosError.response.status === 500) {
-         // alert('Server error. Please try again later.');
-        //} else {
-          //alert('Error uploading file. Please try again.');
-        //}
-      //} else {
-        //console.error('Error uploading file:', axiosError);
-       // alert('An unknown error occurred. Please try again.');
-      //}
-    //}
+    this.folderName = [];
   }
+  
+  
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+  }
+  
+   // Handle file selection
+   onFileSelected(event: any): void {
+    this.selectedFiles = Array.from(event.target.files);
+  }
+}

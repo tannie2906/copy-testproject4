@@ -20,14 +20,14 @@ export class FolderService {
   }
   
   // Delete method updated to use DELETE
-deleteFile(fileId: string): Observable<any> {
+  deleteFile(fileId: string): Observable<any> {
   const url = `${this.apiUrl}/delete/${fileId}/`; // Correct endpoint
   return this.http.delete(url, {
     headers: {
       Authorization: `Token ${this.authService.getToken()}`,
     },
   });
-}
+  }
 
   // Restore files service method
   restoreFiles(fileIds: number[]): Observable<any> {

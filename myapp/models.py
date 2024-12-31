@@ -2,6 +2,7 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from django.utils.timezone import now
 from django.utils.text import slugify
+from django.conf import settings
 from django.db import models
 from django import forms
 import uuid
@@ -13,6 +14,19 @@ def custom_file_name(instance, filename):
     # Use the custom name provided in the 'name' field
     return os.path.join('uploads/', f"{instance.name}{ext}")
 
+class Folder(models.Model):
+    name = models.CharField(max_length=255)
+    path = models.TextField(blank=True, null=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    parent_folder = models.ForeignKey(
+        'self', on_delete=models.CASCADE, null=True, blank=True, related_name='subfolders'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+    
 # handling upload file with custom name and storage
 class File(models.Model):
     id = models.AutoField(primary_key=True)
@@ -24,9 +38,11 @@ class File(models.Model):
     is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     is_starred = models.BooleanField(default=False)
-    #file_path = models.FileField(upload_to='uploads/')
     file_path = models.CharField(max_length=500, blank=True, null=True)
-    #user = models.ForeignKey(User, on_delete=models.CASCADE)
+    folder = models.ForeignKey(
+        Folder, on_delete=models.CASCADE, related_name="files", null=True, blank=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
 
 
     # Custom save method
@@ -100,12 +116,3 @@ class DeletedFile(models.Model):
         return self.file_name
 
 
-
-class Folder(models.Model):
-    name = models.CharField(max_length=255)
-    parent_folder = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)  # This creates 'user_id' automatically
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.name
