@@ -1,5 +1,6 @@
 from datetime import timezone
 import mimetypes
+from pathlib import Path
 import re
 import shutil
 from rest_framework.views import APIView
@@ -22,9 +23,11 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.http import require_GET
 from django.core.files.storage import default_storage
+from django.core.mail import send_mail
 
 from django.views import View
 from django.contrib.auth import authenticate
+from django.contrib.auth.models import User
 from django.http import JsonResponse, FileResponse
 from django.http import HttpResponse, Http404
 from django.conf import settings
@@ -36,6 +39,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 from django.contrib.auth.password_validation import validate_password
 from django.utils.decorators import method_decorator
+from django.db import transaction
 
 
 from .models import DeletedFile, UploadedFile, File, SharedFile, Profile, Folder
@@ -43,6 +47,7 @@ from .serializers import DeletedFilesSerializer, UserSerializer, UploadedFileSer
 from myapp.models import File, DeletedFile
 from .encryption_utils import encrypt_file
 from .encryption_utils import decrypt_file
+from django.contrib.auth import get_user_model
 
 import json
 import logging
@@ -50,6 +55,7 @@ import uuid
 import os
 
 logger = logging.getLogger(__name__)
+User = get_user_model()
 
 # Helper to validate file ownership
 def validate_file_owner(file_id, user):
@@ -139,6 +145,25 @@ class ShareFileView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
+#def upload_folder(request):
+ #   if request.method == 'POST':
+  #      try:
+   #         for key, file in request.FILES.items():
+    #            folder_path, filename = os.path.split(key)  # Extract folder structure and filename
+     #           upload_path = os.path.join(settings.MEDIA_ROOT, 'uploads', folder_path)  # Specify base path
+      #          os.makedirs(upload_path, exist_ok=True)  # Ensure folders are created
+
+                # Save file chunks
+       #         with open(os.path.join(upload_path, filename), 'wb+') as destination:
+        #            for chunk in file.chunks():
+         #               destination.write(chunk)
+#
+ #           return JsonResponse({'message': 'Folders uploaded successfully!'})
+  #      except Exception as e:
+   #         return JsonResponse({'error': str(e)}, status=500)
+  #  return JsonResponse({'error': 'Invalid request'}, status=400)
+
+
 # File & folder Upload
 class FileUploadView(APIView):
     permission_classes = [IsAuthenticated]
@@ -146,69 +171,78 @@ class FileUploadView(APIView):
     def post(self, request):
         try:
             uploaded_files = request.FILES.getlist('files')
-            folder_paths = request.data.getlist('folders')
+            folder_paths = request.data.getlist('folders', [])
             user_id = request.user.id
 
-            # Process folders
-            if folder_paths:
-                for folder_path in folder_paths:
-                    parent_folder = None
-                    folder_hierarchy = os.path.normpath(folder_path).split(os.sep)
+            # Handle folder creation
+            parent_folder = None
+            for folder_path in folder_paths:
+                folder_hierarchy = folder_path.split('/')
+                for folder_name in folder_hierarchy:
+                    parent_folder, _ = Folder.objects.get_or_create(
+                        name=folder_name,
+                        parent_folder=parent_folder,
+                        user_id=user_id
+                    )
 
-                    for folder in folder_hierarchy:
-                        folder_instance, created = Folder.objects.get_or_create(
-                            name=folder,
-                            parent_folder=parent_folder,
-                            user_id=user_id
-                        )
-                        parent_folder = folder_instance
-
+            # Handle file uploads
             if not uploaded_files and folder_paths:
                 return Response({"message": "Folders uploaded successfully!"}, status=201)
 
-            # Validate files
-            allowed_extensions = ['jpg', 'jpeg', 'png', 'pdf', 'txt', 'docx', 'xlsx', 'csv', 'zip']
+            # Allowed file extensions and max size
+            allowed_extensions = {'jpg', 'jpeg', 'png', 'pdf', 'txt', 'docx', 'xlsx', 'csv', 'zip'}
             max_size = 20 * 1024 * 1024  # 20 MB
 
             uploaded_file_data = []
 
             for uploaded_file in uploaded_files:
-                relative_path = request.data.get(f"relative_path_{uploaded_file.name}", uploaded_file.name)
-                if not relative_path:
-                    relative_path = uploaded_file.name
-
-                base_upload_dir = os.path.join(settings.MEDIA_ROOT, 'uploads')
-                target_folder = os.path.dirname(relative_path)
-                final_folder_path = os.path.join(base_upload_dir, target_folder)
-                os.makedirs(final_folder_path, exist_ok=True)
-
                 file_extension = uploaded_file.name.split('.')[-1].lower()
                 if file_extension not in allowed_extensions:
                     return Response({"error": f"Invalid file type: {uploaded_file.name}"}, status=400)
                 if uploaded_file.size > max_size:
                     return Response({"error": f"File size exceeds 20MB: {uploaded_file.name}"}, status=400)
 
+                relative_path = request.data.get(f"relative_path_{uploaded_file.name}", uploaded_file.name)
+                folder_structure = os.path.dirname(relative_path)
+
+                # Create folder structure if necessary
+                parent_folder = None
+                if folder_structure:
+                    for folder_name in folder_structure.split('/'):
+                        parent_folder, _ = Folder.objects.get_or_create(
+                            name=folder_name,
+                            parent_folder=parent_folder,
+                            user_id=user_id
+                        )
+
+                # Check if the file already exists
+                existing_file = File.objects.filter(
+                    file=f"uploads/{relative_path}",
+                    user_id=user_id,
+                    folder=parent_folder
+                ).first()
+
+                if existing_file:
+                    continue  # Skip already existing files to prevent duplication
+
+                # Save the uploaded file
+                base_upload_dir = os.path.join(settings.MEDIA_ROOT, 'uploads')
+                target_folder = os.path.join(base_upload_dir, os.path.dirname(relative_path))
+                os.makedirs(target_folder, exist_ok=True)
+
                 safe_file_name = f"{slugify(os.path.basename(relative_path))}.{file_extension}"
-                file_path = os.path.join(final_folder_path, safe_file_name)
+                file_path = os.path.join(target_folder, safe_file_name)
                 with open(file_path, 'wb+') as destination:
                     for chunk in uploaded_file.chunks():
                         destination.write(chunk)
 
-                # Get or create parent folder
-                parent_folder, _ = Folder.objects.get_or_create(
-                    user_id=user_id,
-                    path=os.path.dirname(relative_path),
-                    defaults={'name': os.path.basename(os.path.dirname(relative_path)) or 'Root'}
-                )
-
-                # Save metadata
+                # Save file metadata
                 file_instance = File.objects.create(
                     file=f"uploads/{relative_path}",
                     file_name=uploaded_file.name,
                     size=uploaded_file.size,
                     user_id=user_id,
-                    file_path=file_path,
-                    folder=parent_folder,
+                    folder=parent_folder
                 )
 
                 uploaded_file_data.append({
@@ -222,10 +256,51 @@ class FileUploadView(APIView):
             }, status=201)
 
         except Exception as e:
-            logger.error(f"Error during file upload: {str(e)}", exc_info=True)
+            print("Upload Error:", str(e))
             return Response({"error": str(e)}, status=500)
+#class UploadView(APIView):
+ #   parser_classes = (MultiPartParser, FormParser) 
+  #  def post(self, request, *args, **kwargs):
+   #     files = request.FILES.getlist('files')
+    #    folder_id = request.data.get('folder_id')  # Ensure this is passed in the request
 
-    
+     #   if not folder_id:
+      #      return Response({"error": "Folder ID is required."}, status=400)
+
+       # try:
+        #    folder = Folder.objects.get(id=folder_id)
+       # except Folder.DoesNotExist:
+        #    return Response({"error": "Folder does not exist."}, status=404)
+
+      #  for file in files:
+       #     try:
+        #        File.objects.create(
+         #           file=file,
+          #          folder=folder,
+           #         user=request.user,
+            #        file_name=file.name,
+             #       size=file.size
+              #  )
+          #  except Exception as e:
+           #     print(f"Error while creating file record: {e}")
+            #    return Response({"error": str(e)}, status=500)
+
+       # return Response({"message": "Files uploaded successfully."}, status=201)
+
+#class FolderUploadView(APIView):
+ #   def post(self, request):
+  #      folder_name = request.data.get('name')
+   #     parent_folder_id = request.data.get('parent_folder')
+
+    #    # Retrieve parent folder if provided, otherwise it's a root folder
+     #   parent_folder = Folder.objects.get(id=parent_folder_id) if parent_folder_id else None
+
+      #  # Create the new folder
+       # new_folder = Folder.objects.create(name=folder_name, parent_folder=parent_folder)
+        
+    #    # Return the serialized folder data
+     #   return Response(FolderSerializer(new_folder).data, status=201)
+
 # ViewSet for files
 class FileViewSet(viewsets.ModelViewSet):
     serializer_class = FileSerializer
@@ -243,22 +318,23 @@ class FileListView(APIView):
         serializer = FileSerializer(files, many=True)
         return Response(serializer.data)
 
-
 class FolderListView(APIView):
-    permission_classes = [IsAuthenticated]
-
     def get(self, request):
-        # Fetch folders and files
-        folders = Folder.objects.filter(user_id=request.user.id)
-        files = File.objects.filter(user_id=request.user.id, is_deleted=False)
-
-        folder_serializer = FolderSerializer(folders, many=True)
-        file_serializer = FileSerializer(files, many=True)
-
-        # Combine both folders and files
+        def serialize_folder(folder):
+            return {
+                "id": folder.id,
+                "name": folder.name,
+                "children": [
+                    serialize_folder(child) for child in Folder.objects.filter(parent_folder=folder)
+                ]
+            }
+        
+        folders = Folder.objects.filter(parent_folder=None)  # Top-level folders
+        files = File.objects.all()
+        
         return Response({
-            'folders': folder_serializer.data,
-            'files': file_serializer.data
+            "folders": [serialize_folder(folder) for folder in folders],
+            "files": [{"id": f.id, "name": f.name, "folder_id": f.folder.id, "size": f.size} for f in files],
         })
 
 #create folder    
@@ -276,7 +352,6 @@ class FolderView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-    
 class FolderViewSet(viewsets.ModelViewSet):
     queryset = Folder.objects.all()
     serializer_class = FolderSerializer
@@ -289,26 +364,20 @@ class FolderViewSet(viewsets.ModelViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class FolderContentView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request, folder_id):
+    def get(self, request, folder_id, *args, **kwargs):
         try:
-            # Fetch subfolders and files in the folder
-            subfolders = Folder.objects.filter(parent_folder_id=folder_id, user=request.user)
-            files = File.objects.filter(folder_id=folder_id, user=request.user, is_deleted=False)
+            folder = Folder.objects.get(id=folder_id)
+            files = folder.files.all()
+            subfolders = folder.subfolders.all()
 
-            # Serialize results
-            folder_serializer = FolderSerializer(subfolders, many=True)
-            file_serializer = FileSerializer(files, many=True)
-
-            return Response({
-                'folders': folder_serializer.data,
-                'files': file_serializer.data
-            })
+            data = {
+                'files': [{'id': file.id, 'name': file.name, 'type': 'file'} for file in files],
+                'subfolders': [{'id': subfolder.id, 'name': subfolder.name, 'type': 'folder'} for subfolder in subfolders],
+            }
+            return Response(data)
         except Folder.DoesNotExist:
-            return Response({'error': 'Folder not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'Folder not found'}, status=404)
 
-    
 class FolderListView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -988,5 +1057,72 @@ class DeleteAccountView(APIView):
 
         return Response({"message": "Account deleted successfully"}, status=status.HTTP_200_OK)
 
+# sharing files with specific users
+class ShareFileView(View):
+    @method_decorator(csrf_exempt, name='dispatch')
+    def post(self, request, *args, **kwargs):
 
+        try:
+            data = json.loads(request.body)
+            file_id = data.get('fileId')
+            email = data.get('email')
 
+            file = File.objects.get(id=file_id)
+            shared_with_user = User.objects.get(email=email)
+            shared_by_user = request.user
+
+            SharedFile.objects.create(file=file, shared_with=shared_with_user, shared_by=shared_by_user)
+
+            send_mail(
+                'File Shared with You',
+                f'{shared_by_user.username} has shared a file with you. File: {file.name}',
+                'noreply@yourapp.com',
+                [email],
+            )
+
+        
+            return JsonResponse({'message': 'File shared successfully!'}, status=200)
+
+        except File.DoesNotExist:
+            return JsonResponse({'error': 'File not found'}, status=404)
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'User not found'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+        
+    def get(self, request, *args, **kwargs):
+        return JsonResponse({'error': 'GET method not allowed for this endpoint'}, status=405)
+    
+@csrf_exempt      
+def share_file(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)  # Parse the JSON data
+        file_id = data.get('fileId')  # Correct key to match the frontend payload
+        email = data.get('email')
+
+        try:
+            # Find the file and user
+            file = File.objects.get(id=file_id)
+            shared_with_user = User.objects.get(email=email)
+            shared_by_user = request.user
+
+            # Create a shared file entry
+            SharedFile.objects.create(file=file, shared_with=shared_with_user, shared_by=shared_by_user)
+
+            # Send email notification
+            send_mail(
+                'File Shared with You',
+                f'{shared_by_user.username} has shared a file with you. File: {file.name}',
+                'noreply@yourapp.com',
+                [email],
+            )
+
+            return JsonResponse({'message': 'File shared successfully!'}, status=200)
+        except File.DoesNotExist:
+            return JsonResponse({'error': 'File not found'}, status=404)
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'User not found'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Invalid HTTP method'}, status=405)

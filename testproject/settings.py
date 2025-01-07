@@ -159,6 +159,20 @@ CSRF_COOKIE_HTTPONLY = False  # Ensures the CSRF token is accessible by JavaScri
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
+#for email
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'your-email@gmail.com'
+EMAIL_HOST_PASSWORD = 'your-email-password-or-app-password'
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.mail.yahoo.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'your-email@yahoo.com'
+EMAIL_HOST_PASSWORD = 'your-email-password-or-app-password'
 
 
 # Static files (CSS, JavaScript, Images)

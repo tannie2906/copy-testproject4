@@ -22,6 +22,12 @@ import { SearchComponent } from './search/search.component';
 import { FilePreviewComponent } from './file-preview/file-preview.component'; 
 import { AuthService } from './auth.service';
 import { FormatBytesPipe } from './format-bytes.pipe';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { ShareDialogComponent } from './share-dialog/share-dialog.component';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatDialogModule } from '@angular/material/dialog';
+import { MatButtonModule } from '@angular/material/button';
 
 
 @NgModule({
@@ -38,13 +44,19 @@ import { FormatBytesPipe } from './format-bytes.pipe';
     DeleteComponent,
     SearchComponent,
     FilePreviewComponent,
-    FormatBytesPipe
+    FormatBytesPipe,
+    ShareDialogComponent
   ],
   imports: [
     BrowserModule,
     AppRoutingModule,  // Ensure this is imported
     FormsModule,       // Import FormsModule for ngModel binding
-    HttpClientModule,
+    HttpClientModule, 
+    BrowserAnimationsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatDialogModule,
+    MatButtonModule,
   ],
   providers: [
     FileService,

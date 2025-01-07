@@ -15,7 +15,7 @@ class UserSerializer(serializers.ModelSerializer):
 class FileSerializer(serializers.ModelSerializer):
     class Meta:
         model = File
-        fields = ['id', 'file_name', 'file', 'size', 'user_id', 'created_at', 'is_deleted', 'deleted_at', 'file_path']
+        fields = ['id', 'file_name', 'file', 'size', 'user_id', 'created_at', 'is_deleted', 'deleted_at', 'file_path', 'folder']
 
 class FolderSerializer(serializers.ModelSerializer):
     subfolders = serializers.SerializerMethodField()
@@ -23,10 +23,11 @@ class FolderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Folder
-        fields = ['id', 'name', 'path', 'parent_folder', 'subfolders', 'files']
+        fields = ['id', 'name', 'path', 'parent_folder', 'subfolders', 'files', 'created_at', 'user']
 
     def get_subfolders(self, obj):
         return FolderSerializer(obj.subfolders.all(), many=True).data
+
     
 class UploadedFileSerializer(serializers.ModelSerializer):
     size = serializers.SerializerMethodField()  # Add size field

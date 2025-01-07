@@ -7,6 +7,7 @@ import { AuthService } from '../auth.service';
 import { environment } from 'src/environments/environment';
 
 export interface File {
+  webkitRelativePath: any;
   id: number;
   user_id: number;
   filename: string; 
@@ -20,6 +21,8 @@ export interface File {
   deleted_at?: string;
   file_path: string;
   modified: string;
+  isStarred?: boolean; 
+
 }
 
 @Injectable({
@@ -156,11 +159,41 @@ export class FileService {
       headers: { Authorization: `Token ${token}` },
     });
   }
-  
 
-  
   // Create Folder
 createFolder(folderData: any): Observable<any> {
   return this.http.post(`${this.apiUrl}/folders/`, folderData, this.getHeaders());
 } 
-}  
+
+  //share file
+  shareFile(fileId: number, email: string) {
+    const csrfToken = this.getCsrfToken();
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'X-CSRFToken': csrfToken,
+    });
+  
+    const payload = { fileId, email };
+    const url = `${this.apiUrl}/share-file/`;
+    return this.http.post(url, payload, { headers }).pipe(
+      catchError((error) => {
+        console.error('Error sharing file:', error.message);
+        return throwError(() => error);
+      })
+    );
+  }
+  
+
+  private getCsrfToken(): string {
+    const name = 'csrftoken';
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+      cookie = cookie.trim();
+      if (cookie.startsWith(name + '=')) {
+        return cookie.substring(name.length + 1);
+      }
+    }
+    return '';
+  }
+  
+}

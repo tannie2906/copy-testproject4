@@ -23,4 +23,12 @@ export class UploadService {
       observe: 'events',
     });
   }
-}
+
+  uploadFolders(formData: FormData): Observable<any> {
+    return this.http.post(this.uploadUrl, formData, {
+      headers: new HttpHeaders(),
+      reportProgress: true,
+      observe: 'events',
+    });
+  }
+}  

@@ -14,17 +14,24 @@ def custom_file_name(instance, filename):
     # Use the custom name provided in the 'name' field
     return os.path.join('uploads/', f"{instance.name}{ext}")
 
+# In your models.py
 class Folder(models.Model):
     name = models.CharField(max_length=255)
-    path = models.TextField(blank=True, null=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    parent_folder = models.ForeignKey(
-        'self', on_delete=models.CASCADE, null=True, blank=True, related_name='subfolders'
-    )
+    parent_folder = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='subfolders')
     created_at = models.DateTimeField(auto_now_add=True)
+    user = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
 
     def __str__(self):
         return self.name
+
+    @property
+    def path(self):
+        path_parts = []
+        parent = self.parent_folder
+        while parent:
+            path_parts.insert(0, parent.name)
+            parent = parent.parent_folder
+        return '/'.join(path_parts) + '/' + self.name if path_parts else self.name
 
     
 # handling upload file with custom name and storage
@@ -36,13 +43,10 @@ class File(models.Model):
     deleted_at = models.DateTimeField(null=True, blank=True)
     size = models.IntegerField()
     is_deleted = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
     is_starred = models.BooleanField(default=False)
     file_path = models.CharField(max_length=500, blank=True, null=True)
-    folder = models.ForeignKey(
-        Folder, on_delete=models.CASCADE, related_name="files", null=True, blank=True
-    )
     created_at = models.DateTimeField(auto_now_add=True)
+    folder = models.ForeignKey(Folder, on_delete=models.CASCADE)
 
 
     # Custom save method
@@ -60,11 +64,10 @@ class File(models.Model):
 
 # sharing files with specific users.
 class SharedFile(models.Model):
-    file = models.ForeignKey(File, on_delete=models.CASCADE, related_name="shared_files")
-    shared_with = models.EmailField()  # User email
-    share_link = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    permissions = models.CharField(max_length=10, choices=[("read", "Read"), ("edit", "Edit")])
-    created_at = models.DateTimeField(auto_now_add=True)
+    file = models.ForeignKey('File', on_delete=models.CASCADE)  # Replace 'File' with your file model
+    shared_with = models.ForeignKey(User, on_delete=models.CASCADE, related_name='shared_files')
+    shared_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='shared_by')
+    timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Shared {self.file.name} with {self.shared_with}"

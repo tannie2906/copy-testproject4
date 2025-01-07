@@ -18,6 +18,7 @@ export interface File {
   is_deleted?: boolean;
   deleted_at?: string;
   file_path: string;
+  isStarred?: boolean; 
 }
 
 @Component({

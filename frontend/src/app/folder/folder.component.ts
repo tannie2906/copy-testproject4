@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef, Input } from '@angular/core';
 import { HttpClient, HttpEventType, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../auth.service';
 import { FileService, File } from '../services/file.service';
@@ -7,7 +7,9 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { UserFile } from '../models/user-file.model'; 
 import axios from 'axios';
 import { UploadService } from  '../services/upload.service';
-
+import { File as CustomFile } from '../services/file.service';
+import { ShareDialogComponent } from '../share-dialog/share-dialog.component';
+import { MatDialog } from '@angular/material/dialog';
 
 @Component({
   selector: 'app-folder',
@@ -26,6 +28,15 @@ export class FolderComponent implements OnInit {
   uploadDropdownVisible: boolean = false;
   uploading = false;      // Track if upload is in progress
   progress: number | null = null;  // Track progress
+  currentFolderId: string | null = null;
+  isAuthenticated: boolean = false;
+  folders: any;
+  @Input() folderId!: string; 
+  showShareModal = false;
+  shareEmail = '';
+  sharePermissions: string | undefined = '';
+ // Add appropriate type here (e.g., string, number, etc.)
+  
 
    // Get references to file inputs
    @ViewChild('fileInput') fileInput!: ElementRef;
@@ -43,11 +54,8 @@ export class FolderComponent implements OnInit {
     name: 'asc',
     size: 'asc',
     modified: 'asc',
+    
   };
-
-  isAuthenticated: boolean = false;
-  folders: any;
-  currentFolderId: string | undefined;
 
   constructor(
     private http: HttpClient,
@@ -55,6 +63,9 @@ export class FolderComponent implements OnInit {
     private fileService: FileService,
     private router: Router,
     private uploadService: UploadService,
+    private dialog: MatDialog,
+    
+    
   ) {}
 
   ngOnInit(): void {
@@ -178,28 +189,7 @@ export class FolderComponent implements OnInit {
   }  
   
   // sharing the file
-  onShare(file: any): void {
-    const emails = prompt('Enter emails to share (comma-separated):');
-    const permissions = 'read';  // Example: fixed 'read' permissions
-  
-    if (emails) {
-      const shareWith = emails.split(',').map(email => email.trim());
-      this.http.post('http://127.0.0.1:8000/api/files/share/', {
-        file_id: file.id,
-        share_with: shareWith,
-        permissions: permissions
-      }).subscribe({
-        next: (response: any) => {
-          console.log('File shared successfully:', response);
-          alert(`Shared Links:\n${response.share_links.map((link: any) => link.share_link).join('\n')}`);
-        },
-        error: (error) => {
-          console.error('Error sharing file:', error);
-          alert('Failed to share the file. Please try again.');
-        }
-      });
-    }
-  }  
+ 
 
   onMove(_t23: any) {
     throw new Error('Method not implemented.');
@@ -247,122 +237,100 @@ export class FolderComponent implements OnInit {
   }
 
   // Handle File Upload (when selecting a file)
-  onUploadFile(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (input.files) {
-      const files = Array.from(input.files); // Convert FileList to File[]
-      this.uploading = true;
-      this.uploadService.uploadFiles(files).subscribe(
-        (event) => {
-          if (event.type === HttpEventType.UploadProgress) {
-            this.progress = Math.round((100 * event.loaded) / (event.total || 1));
-          } else if (event.type === HttpEventType.Response) {
-            console.log('File uploaded successfully:', event.body);
-            this.uploading = false;
-            this.progress = null;
-          }
-        },
-        (error) => {
-          console.error('Error uploading file:', error);
-          this.uploading = false;
-          this.progress = null;
-        }
-      );
-    }
+  // Handle file upload
+onUploadFile(event: any) {
+  const files = event.target.files;
+  const formData = new FormData();
+
+  // Loop through each file and add it to the form data
+  for (let file of files) {
+    formData.append('files', file);
   }
+
+  this.uploadFiles(formData, false);
+}
+
+// Handle folder upload
+onUploadFolder(event: any) {
+  const files = event.target.files;
+  const formData = new FormData();
+
+  // Loop through each file and add it with its relative path (for folders)
+  for (let file of files) {
+    formData.append('files', file, file.webkitRelativePath);
+  }
+
+  // Upload the files, passing true to indicate folder upload
+  this.uploadFiles(formData, true);
+}
+
+
+uploadFiles(formData: FormData, isFolder: boolean) {
+  this.uploading = true;
+
+  this.http.post(`${this.apiUrl}/upload/`, formData, {
+    reportProgress: true,
+    observe: 'events',
+  }).subscribe({
+    next: (event: any) => {
+      if (event.type === HttpEventType.UploadProgress) {
+        this.progress = Math.round((100 * event.loaded) / event.total);
+      } else if (event.type === HttpEventType.Response) {
+        this.uploading = false;
+        this.progress = null;
+
+        // Update files and folders based on server response
+        const uploadedFiles = event.body?.files || [];
+        uploadedFiles.forEach((file: any) => {
+          this.files.push(file);
+        });
+      }
+    },
+    error: (error) => {
+      this.uploading = false;
+      this.progress = null;
+      console.error('File upload failed:', error);
+    }
+  });
+}
+
+
   
 
-  // Handle Folder Upload (when selecting a folder)
-  onUploadFolder(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (input.files) {
-      const files = Array.from(input.files); // Convert FileList to File[]
-      console.log('Files to upload:', files);
-  
-      this.uploading = true;
-      this.uploadService.uploadFiles(files).subscribe(
-        (event) => {
-          if (event.type === HttpEventType.UploadProgress) {
-            this.progress = Math.round((100 * event.loaded) / (event.total || 1));
-          } else if (event.type === HttpEventType.Response) {
-            console.log('Folder uploaded successfully:', event.body);
-            this.uploading = false;
-            this.progress = null;
-          }
-        },
-        (error) => {
-          console.error('Error uploading folder:', error);
-          this.uploading = false;
-          this.progress = null;
-        }
-      );
-    }
-  }
-  
-
-  
   onCreateDocument() {
     throw new Error('Method not implemented.');
   }
 
-  onCreateFolder(parentFolderId: number | null = null): void {
-    const folderName = prompt('Enter folder name:');
-    if (!folderName || folderName.trim() === '') {
-      alert('Folder name cannot be empty.');
-      return;
-    }
-  
-    const payload = { 
-      name: folderName.trim(),
-      parent_folder: parentFolderId ?? null // Null if no parent
-    };
-  
-    this.fileService.createFolder(payload).subscribe({
-      next: () => {
-        alert('Folder created successfully!');
-        this.loadFolderContents(parentFolderId); // Reload contents
-      },
-      error: (error) => {
-        console.error('Error creating folder:', error);
-        alert('Failed to create folder. Please try again.');
-      },
-    });
+  onCreateFolder(): void {
+    console.log('Folder creation triggered');
   }
+  
 
-  loadFolderContents(folderId: number | null = null): void {
-    const id = folderId ?? 0; // Default to 0 if null
-    this.fileService.getFolderContents(id).subscribe(
-      (data) => {
-        // Process folders
-        const folders = data.folders.map((folder: any) => ({
-          id: folder.id,
-          name: folder.name,
-          type: 'folder', // Explicitly mark as folder
-          parentFolder: folder.parent_folder,
-          createdAt: folder.created_at,
-        }));
+  //onCreateFolder(parentFolderId: number | null = null): void {
+   // const folderName = prompt('Enter folder name:');
+    //if (!folderName || folderName.trim() === '') {
+     // alert('Folder name cannot be empty.');
+     // return;
+    //}
   
-        // Process files
-        const files = data.files.map((file: any) => ({
-          id: file.id,
-          name: file.file_name,
-          size: file.size,
-          type: 'file', // Explicitly mark as file
-          createdAt: file.created_at,
-        }));
+ //   const payload = { 
+   //   name: folderName.trim(),
+     // parent_folder: parentFolderId ?? null // Null if no parent
+    //};
   
-        // Combine folders and files for display
-        this.files = [...folders, ...files].map((item) => ({
-          ...item,
-          type: item.type || (item.id ? 'folder' : 'file')  // Default to 'folder' if not explicitly a file
-        }));
-        
-      },
-      (error) => {
-        console.error('Error fetching folder contents:', error);
-      }
-    );
-  }
+    //this.fileService.createFolder(payload).subscribe({
+     // next: () => {
+       // alert('Folder created successfully!');
+       // this.loadFolderContents(parentFolderId); // Reload contents
+      //},
+      //error: (error) => {
+       // console.error('Error creating folder:', error);
+       // alert('Failed to create folder. Please try again.');
+     // },
+   // });
+  //}
+
+
   
   
   // Fetch files using the service
@@ -454,18 +422,26 @@ export class FolderComponent implements OnInit {
   }
 
   //open folder
-  onOpenFolder(folderId: string): void {
-    // Find the folder and load its contents.
-    const folder = this.files.find(file => file.id === folderId && file.isFolder);
-  
-    if (folder) {
-      // You might need to set a `currentFolder` property and load its children.
-      this.currentFolderId = folderId;
-      this.files = folder.contents || []; // Assume `contents` contains the child files/folders.
-    }
+  onOpenFolder(folderId: string) {
+    this.currentFolderId = folderId;
+    // Fetch files and subfolders within the folder (if necessary)
+    this.http.get(`http://localhost:8000/api/folder/${folderId}/`).subscribe((response: any) => {
+      this.files = response.files;
+    });
   }
   
-  
+  loadFolderContents(folderId: number): void {
+    this.fileService.getFolderContents(folderId).subscribe({
+      next: (data) => {
+        this.files = [
+          ...data.folders.map((folder: any) => ({ ...folder, type: 'folder' })),
+          ...data.files.map((file: any) => ({ ...file, type: 'file' })),
+
+        ];
+      },
+      error: (error) => console.error('Failed to load folder contents', error),
+    });
+  }
   
   //async fetchFiles() {
     //const token = this.authService.getToken();
@@ -558,6 +534,7 @@ export class FolderComponent implements OnInit {
     alert('File moved to trash.');
     this.fetchFilesAndFolders();
   }
+
   async downloadFile(fileId: number) {
     const token = this.authService.getToken();
     const response = await axios.get(
@@ -573,19 +550,6 @@ export class FolderComponent implements OnInit {
     link.setAttribute('download', 'file'); // Dynamic name can be set here
     document.body.appendChild(link);
     link.click();
-  }
-
-  async shareFile(fileId: number) {
-    const token = this.authService.getToken();
-    const response = await axios.post(
-      `http://127.0.0.1:8000/api/share/${fileId}/`,
-      {},
-      {
-        headers: { Authorization: `Token ${token}` },
-      }
-    );
-    const shareLink = response.data.share_link;
-    alert(`Shareable link: ${shareLink}`);
   }
 
   //file review
@@ -616,4 +580,26 @@ export class FolderComponent implements OnInit {
       }
     );
   }
+
+  shareFile(fileId: number): void {
+    const dialogRef = this.dialog.open(ShareDialogComponent, {
+        width: '400px',
+        data: { fileId },
+    });
+
+    dialogRef.afterClosed().subscribe((email) => {
+        if (email) {
+            this.fileService.shareFile(fileId, email).subscribe(
+                () => alert('File shared successfully!'),
+                (error) => alert('Error sharing file: ' + error.message)
+            );
+        }
+    });
 }
+}
+
+  
+
+
+
+

@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Output } from '@angular/core';
 import { FileService } from '../services/file.service'; // Ensure this service handles file upload
 import { AuthService } from '../auth.service'; // Ensure the path to AuthService is correct
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 
 @Component({
   selector: 'app-upload',
@@ -13,20 +13,18 @@ export class UploadComponent {
   fileName: string = ''; // Variable for custom file name
   folderName: string[] = [];
 
-
   @Output() fileUploaded = new EventEmitter<void>();
 
   constructor(private fileService: FileService, private authService: AuthService) {}
 
-   // Handle folder selection
-
-   async onFolderSelected(event: any): Promise<void> {
+  // Handle folder selection
+  async onFolderSelected(event: any): Promise<void> {
     const items = event.target.files;
     for (const item of items) {
       const file = item;
       const relativePath = file.webkitRelativePath || file.name;
       this.selectedFiles.push(file);
-  
+
       // Extract folder hierarchy
       const folderPath = relativePath.substring(0, relativePath.lastIndexOf('/'));
       if (folderPath && !this.folderName.includes(folderPath)) {
@@ -35,23 +33,16 @@ export class UploadComponent {
     }
     console.log('Detected folders:', this.folderName);
   }
-  
-   
-  
-    
-   
-  
 
   // Handle file drop
   async onDrop(event: DragEvent): Promise<void> {
     event.preventDefault();
-    
+
     if (event.dataTransfer?.items) {
-      // Convert DataTransferItemList to an array
       const items = Array.from(event.dataTransfer.items);
-  
+
       for (const item of items) {
-        const entry = item.webkitGetAsEntry(); // Access file or directory entry
+        const entry = item.webkitGetAsEntry();
         if (entry && entry.isFile) {
           const file = item.getAsFile();
           if (file) this.selectedFiles.push(file);
@@ -59,35 +50,33 @@ export class UploadComponent {
       }
     }
   }
-  
 
   async uploadFiles(): Promise<void> {
     if (this.selectedFiles.length === 0 && this.folderName.length === 0) {
       alert('No files or folders selected.');
       return;
     }
-  
+
     const token = this.authService.getToken();
     if (!token) {
       alert('Authentication required. Please log in.');
       return;
     }
-  
+
     const formData = new FormData();
-  
+
     // Add folders if selected
     for (const folder of this.folderName) {
-      formData.append('folders[]', folder); // Append folders as array elements
+      formData.append('folders[]', folder);
     }
-    
-  
+
     // Attach files
     for (const file of this.selectedFiles) {
       const relativePath = file.webkitRelativePath || file.name;
       formData.append('files', file);
       formData.append(`relative_path_${file.name}`, relativePath);
     }
-  
+
     try {
       const response = await axios.post('http://127.0.0.1:8000/api/upload/', formData, {
         headers: {
@@ -95,7 +84,7 @@ export class UploadComponent {
           'Content-Type': 'multipart/form-data',
         },
       });
-  
+
       console.log('Upload successful:', response.data);
       this.fileUploaded.emit();
       alert('Files and folders uploaded successfully!');
@@ -103,18 +92,17 @@ export class UploadComponent {
       console.error('Upload failed:', error);
       alert('Upload failed. Please try again.');
     }
-  
+
     this.selectedFiles = [];
     this.folderName = [];
   }
-  
-  
+
   onDragOver(event: DragEvent): void {
     event.preventDefault();
   }
-  
-   // Handle file selection
-   onFileSelected(event: any): void {
+
+  // Handle file selection
+  onFileSelected(event: any): void {
     this.selectedFiles = Array.from(event.target.files);
   }
 }

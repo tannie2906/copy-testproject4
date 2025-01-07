@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import FileUploadView, FileListView, CustomAuthToken, FolderContentView, ProfileView, RegisterUserView, FileViewSet, UploadProfilePictureView,  DeletedFilesView
-from .views import FileViewSet
+from .views import FileUploadView, FileListView, CustomAuthToken, ProfileView, RegisterUserView, UploadProfilePictureView,  DeletedFilesView 
+#from .views import FileViewSet
 from . import views
 from .views import FileView, RestoreFileView, PermanentlyDeleteFilesView #DeletedFileDeleteView
 from .views import EmptyTrashView, FileSearchView
@@ -19,12 +19,17 @@ from .views import (
     DeleteAccountView,
     FolderView,
     FolderListView,
-    FolderViewSet
+    FolderViewSet,
+    #UploadView,
+    FolderContentView,
+    ShareFileView,
+    
 )
 
 router = DefaultRouter()
-router.register(r'files', FileViewSet, basename='file')
+#router.register(r'files', FileViewSet, basename='file')
 router.register(r'folders', FolderViewSet, basename='folder')
+
 
 urlpatterns = [
     path('api/', include(router.urls)),
@@ -83,13 +88,18 @@ urlpatterns = [
 
 
     path('folders/', views.FolderListView.as_view(), name='folder-list'),  # GET
-   path('folders/create/', views.FolderView.as_view(), name='folder-create'),  # POST
+    #path('folders/create/', views.FolderView.as_view(), name='folder-create'),  # POST
     path('folders/<int:folder_id>/', views.FolderContentView.as_view(), name='folder_list'),
 
 
     #new one
-    path('folders/', FolderView.as_view(), name='create-folder'),
+    #path('folders/', FolderView.as_view(), name='create-folder'),
 
+   # path('upload-folder/', views.upload_folder, name='upload_folder'),
 
+   # path('upload/', UploadView.as_view(), name='upload'),
+    path('folder/<int:folder_id>/', FolderContentView.as_view(), name='folder-contents'),
+    path('share/<int:file_id>/', ShareFileView.as_view(), name='share-file'),
+    path('api/share-file/', ShareFileView.as_view(), name='share-file'),
 
 ]
