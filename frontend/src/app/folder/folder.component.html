@@ -6,16 +6,7 @@
       Share and manage your files with top-notch security and simplicity.
     </p>
 
-    <!-- Create Button with Dropdown -->
-    <div class="dropdown">
-      <button class="dropdown-button">Create</button>
-      <div class="dropdown-content">
-        <a href="#" (click)="onCreateFolder()">Folder</a>
-        <a href="#" (click)="onCreateDocument()">Document</a>
-      </div>
-    </div>
 
-    <!-- Upload Button -->
      <!-- Upload Button -->
 <div class="dropdown">
   <button class="dropdown-button" (click)="toggleUploadDropdown()">Upload</button>
@@ -48,14 +39,6 @@
 </div>
 
 
-
-
-
-     <!-- start here -->
-  
-     
-    <!-- delete here -->
-
   <!-- Starred Files Button -->
   <div class="files-header">
     <h2 *ngIf="!showStarredFiles">Your Files</h2>
@@ -67,84 +50,83 @@
     </button>
   </div>
 
-  <!-- Files Section -->
-  <section class="file-section">
-    <table class="file-table">
-      <thead>
-        <tr>
-          <th (click)="sortFiles('name')" style="cursor: pointer;">
-            Name
-            <span *ngIf="sortOrder['name'] === 'asc'">▲</span>
-            <span *ngIf="sortOrder['name'] === 'desc'">▼</span>
-          </th>
-          <th (click)="sortFiles('size')" style="cursor: pointer;">
-            Size
-            <span *ngIf="sortOrder['size'] === 'asc'">▲</span>
-            <span *ngIf="sortOrder['size'] === 'desc'">▼</span>
-          </th>
-          <th>Who can access</th>
-          <th (click)="sortFiles('modified')" style="cursor: pointer;">
-            Modified
-            <span *ngIf="sortOrder['modified'] === 'asc'">▲</span>
-            <span *ngIf="sortOrder['modified'] === 'desc'">▼</span>
-          </th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-
-        <tr *ngFor="let file of (showStarredFiles ? starredFiles : files)">
-          <!-- Folder -->
+ <!-- Files Section -->
+<section class="file-section">
+  <table class="file-table">
+    <thead>
+      <tr>
+        <th (click)="sortFiles('name')" style="cursor: pointer;">
+          Name
+          <span *ngIf="sortOrder['name'] === 'asc'">▲</span>
+          <span *ngIf="sortOrder['name'] === 'desc'">▼</span>
+        </th>
+        <th (click)="sortFiles('size')" style="cursor: pointer;">
+          Size
+          <span *ngIf="sortOrder['size'] === 'asc'">▲</span>
+          <span *ngIf="sortOrder['size'] === 'desc'">▼</span>
+        </th>
+        <th>Owner</th>
+        <th (click)="sortFiles('modified')" style="cursor: pointer;">
+          Modified
+          <span *ngIf="sortOrder['modified'] === 'asc'">▲</span>
+          <span *ngIf="sortOrder['modified'] === 'desc'">▼</span>
+        </th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let file of (showStarredFiles ? starredFiles : files)">
+        <!-- Name -->
+        <td>
           <div *ngIf="file.isFolder" (click)="onOpenFolder(file.id)">
             <i class="fa fa-folder"></i>
             <a>{{ file.name }}</a>
           </div>
-          <!-- File -->
           <div *ngIf="!file.isFolder">
-            <a (click)="onOpenFile(file, $event)">
+            <!--<a (click)="onOpenFile(file, $event)">-->
               <i class="fa fa-file"></i>
               {{ file.name }}
-            </a>
+           <!-- </a> -->
           </div>
+        </td>
 
-          <!-- File Size -->
-          <td>{{ file.isFolder ? '--' : formatFileSize(file.size) }}</td>
+        <!-- File Size -->
+        <td>{{ file.size || '—' }}</td>
 
-          <!-- Owner Information -->
-          <td>Owner: {{ file.owner?.username }}</td>
+        <!-- Owner Information -->
+      <td>{{ file.owner || 'Unknown' }}</td>
 
-          <!-- Modified Date -->
-          <td>{{ file.created_at | date: 'medium' }}</td>
+      <!-- Modified Date -->
+      <td>{{ file.modified ? (file.modified | date: 'medium') : 'Unknown' }}</td>
 
-          <!-- Actions -->
-          <td class="actions">
-            <!-- Star Toggle -->
-            <button (click)="toggleStar(file)" aria-label="Toggle star">
-              <span [class]="file.isStarred ? 'starred-icon' : 'unstarred-icon'">★</span>
-            </button>
 
-            <!-- Dropdown Menu -->
-            <div class="dropdown">
-              <button class="more-button" (click)="toggleDropdown(file)">⋮</button>
-              <div
-                class="dropdown-menu"
-                [ngClass]="{ 'adjust-position': file.adjustDropdown }"
-                *ngIf="file.showDropdown"
-              >
-                <button (click)="renameFile(file.id)">Rename</button>
-                <button (click)="deleteFile(file.id)">Delete</button>
-                <button (click)="downloadFile(file.id)">Download</button>
-                <button (click)="shareFile(file.id)">Share</button>
-              </div>
+        <!-- Actions -->
+        <td class="actions">
+          <!-- Star Toggle -->
+          <button (click)="toggleStar(file)" aria-label="Toggle star">
+            <span [class]="file.isStarred ? 'starred-icon' : 'unstarred-icon'">★</span>
+          </button>
+
+          <!-- Dropdown Menu -->
+          <div class="dropdown">
+            <button class="more-button" (click)="toggleDropdown(file)">⋮</button>
+            <div
+              class="dropdown-menu"
+              [ngClass]="{ 'adjust-position': file.adjustDropdown }"
+              *ngIf="file.showDropdown"
+            >
+              <button (click)="renameFile(file.id)">Rename</button>
+              <button (click)="deleteFile(file.id)">Delete</button>
+              <button (click)="downloadFile(file.id)">Download</button>
+              <button (click)="shareFile(file.id)">Share</button>
             </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </section>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</section>
 
-
-  <!-- delete here -->
 
   <!-- Rename Dialog -->
   <div *ngIf="selectedFileId">
@@ -161,6 +143,7 @@
       <p>{{ progress }}%</p>
     </div>
   </div>
+
 
 
 

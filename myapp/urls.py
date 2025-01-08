@@ -39,6 +39,7 @@ urlpatterns = [
     path('register/', RegisterUserView.as_view(), name='register'),
     path('token-auth/', TokenObtainPairView.as_view(), name='api_token_auth'),
     path('token-refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('accounts/', include('two_factor.urls', 'two_factor')),
 
     #update setting
     path('settings/', views.get_settings, name='get_settings'),  # GET endpoint

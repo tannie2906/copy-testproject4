@@ -27,7 +27,9 @@ import { ShareDialogComponent } from './share-dialog/share-dialog.component';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDialogModule } from '@angular/material/dialog';
-import { MatButtonModule } from '@angular/material/button';
+import { MatButtonModule } from '@angular/material/button'; //for dialog box
+import { NgxQrcodeModule } from 'ngx-qrcode2';
+import { QrCodeComponent } from './qr-code/qr-code.component'; //for 2fa
 
 
 @NgModule({
@@ -45,7 +47,8 @@ import { MatButtonModule } from '@angular/material/button';
     SearchComponent,
     FilePreviewComponent,
     FormatBytesPipe,
-    ShareDialogComponent
+    ShareDialogComponent,
+    QrCodeComponent
   ],
   imports: [
     BrowserModule,
@@ -57,6 +60,8 @@ import { MatButtonModule } from '@angular/material/button';
     MatInputModule,
     MatDialogModule,
     MatButtonModule,
+    NgxQrcodeModule, // Import the module here
+    
   ],
   providers: [
     FileService,

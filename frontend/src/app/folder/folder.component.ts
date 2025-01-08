@@ -20,6 +20,7 @@ export class FolderComponent implements OnInit {
   files: any[] = []; // Array to store file data
   errorMessage: string = ''; // For displaying errors
   folderFiles: File[] = [];
+  selectedFile: any = null;
   showStarredFiles: boolean = false; // To toggle between main and starred view
   starredFiles: any[] = []; // Holds starred files
   selectedFileId: number | null = null;
@@ -34,9 +35,7 @@ export class FolderComponent implements OnInit {
   @Input() folderId!: string; 
   showShareModal = false;
   shareEmail = '';
-  sharePermissions: string | undefined = '';
- // Add appropriate type here (e.g., string, number, etc.)
-  
+  sharePermissions: string | undefined = '';  
 
    // Get references to file inputs
    @ViewChild('fileInput') fileInput!: ElementRef;
@@ -64,27 +63,15 @@ export class FolderComponent implements OnInit {
     private router: Router,
     private uploadService: UploadService,
     private dialog: MatDialog,
-    
-    
   ) {}
 
   ngOnInit(): void {
-    // Check if the user is authenticated by checking the token in AuthService
     this.isAuthenticated = !!this.authService.getToken();
-    //this.fetchFiles();          // Loads all files
-    this.fetchFilesAndFolders(); 
-    this.fetchStarredFiles(); 
-    
     if (!this.isAuthenticated) {
       this.errorMessage = 'You are not authenticated. Please log in.';
+      return;
     }
-
-    // Fetch all files only if authenticated
-    if (this.isAuthenticated) {
-      this.fetchFilesAndFolders(); 
-    } else {
-      this.errorMessage = 'You are not authenticated. Please log in.';
-    }
+    this.fetchFilesAndFolders();
   }
 
   getHeaders() {
@@ -187,13 +174,6 @@ export class FolderComponent implements OnInit {
       },
     });
   }  
-  
-  // sharing the file
- 
-
-  onMove(_t23: any) {
-    throw new Error('Method not implemented.');
-  }
 
   onRename(file: any): void {
     const newName = prompt('Enter a new name for the file:', file.filename);
@@ -237,102 +217,61 @@ export class FolderComponent implements OnInit {
   }
 
   // Handle File Upload (when selecting a file)
-  // Handle file upload
-onUploadFile(event: any) {
-  const files = event.target.files;
-  const formData = new FormData();
+  onUploadFile(event: any) {
+    const files = event.target.files;
+    const formData = new FormData();
 
-  // Loop through each file and add it to the form data
-  for (let file of files) {
-    formData.append('files', file);
+    // Loop through each file and add it to the form data
+    for (let file of files) {
+      formData.append('files', file);
+    }
+
+    this.uploadFiles(formData, false);
   }
 
-  this.uploadFiles(formData, false);
-}
+  // Handle folder upload
+  onUploadFolder(event: any) {
+    const files = event.target.files;
+    const formData = new FormData();
 
-// Handle folder upload
-onUploadFolder(event: any) {
-  const files = event.target.files;
-  const formData = new FormData();
+    // Loop through each file and add it with its relative path (for folders)
+    for (let file of files) {
+      formData.append('files', file, file.webkitRelativePath);
+    }
 
-  // Loop through each file and add it with its relative path (for folders)
-  for (let file of files) {
-    formData.append('files', file, file.webkitRelativePath);
+    // Upload the files, passing true to indicate folder upload
+    this.uploadFiles(formData, true);
   }
 
-  // Upload the files, passing true to indicate folder upload
-  this.uploadFiles(formData, true);
-}
+  uploadFiles(formData: FormData, isFolder: boolean) {
+    this.uploading = true;
 
+    this.http.post(`${this.apiUrl}/upload/`, formData, {
+      reportProgress: true,
+      observe: 'events',
+    }).subscribe({
+      next: (event: any) => {
+        if (event.type === HttpEventType.UploadProgress) {
+          this.progress = Math.round((100 * event.loaded) / event.total);
+        } else if (event.type === HttpEventType.Response) {
+          this.uploading = false;
+          this.progress = null;
 
-uploadFiles(formData: FormData, isFolder: boolean) {
-  this.uploading = true;
-
-  this.http.post(`${this.apiUrl}/upload/`, formData, {
-    reportProgress: true,
-    observe: 'events',
-  }).subscribe({
-    next: (event: any) => {
-      if (event.type === HttpEventType.UploadProgress) {
-        this.progress = Math.round((100 * event.loaded) / event.total);
-      } else if (event.type === HttpEventType.Response) {
+          // Update files and folders based on server response
+          const uploadedFiles = event.body?.files || [];
+          uploadedFiles.forEach((file: any) => {
+            this.files.push(file);
+          });
+        }
+      },
+      error: (error) => {
         this.uploading = false;
         this.progress = null;
-
-        // Update files and folders based on server response
-        const uploadedFiles = event.body?.files || [];
-        uploadedFiles.forEach((file: any) => {
-          this.files.push(file);
-        });
+        console.error('File upload failed:', error);
       }
-    },
-    error: (error) => {
-      this.uploading = false;
-      this.progress = null;
-      console.error('File upload failed:', error);
-    }
-  });
-}
-
-
-  
-
-  onCreateDocument() {
-    throw new Error('Method not implemented.');
+    });
   }
 
-  onCreateFolder(): void {
-    console.log('Folder creation triggered');
-  }
-  
-
-  //onCreateFolder(parentFolderId: number | null = null): void {
-   // const folderName = prompt('Enter folder name:');
-    //if (!folderName || folderName.trim() === '') {
-     // alert('Folder name cannot be empty.');
-     // return;
-    //}
-  
- //   const payload = { 
-   //   name: folderName.trim(),
-     // parent_folder: parentFolderId ?? null // Null if no parent
-    //};
-  
-    //this.fileService.createFolder(payload).subscribe({
-     // next: () => {
-       // alert('Folder created successfully!');
-       // this.loadFolderContents(parentFolderId); // Reload contents
-      //},
-      //error: (error) => {
-       // console.error('Error creating folder:', error);
-       // alert('Failed to create folder. Please try again.');
-     // },
-   // });
-  //}
-
-
-  
-  
   // Fetch files using the service
   getStarredFiles(): void {
     this.fileService.getStarredFiles().subscribe({
@@ -384,7 +323,7 @@ uploadFiles(formData: FormData, isFolder: boolean) {
       }
     });
   }
-
+  
   toggleStarredView(): void {
     this.showStarredFiles = !this.showStarredFiles;
     if (this.showStarredFiles) {
@@ -401,24 +340,6 @@ uploadFiles(formData: FormData, isFolder: boolean) {
         console.error('Error loading files:', error);
       }
     );
-  }
-
-  //open the file when click
-  onOpenFile(file: File, event: Event): void {
-    event.preventDefault();  // Prevent default behavior (if it's a link)
-  
-    const token = this.authService.getToken(); // Retrieve the token from AuthService
-
-    if (!token) {
-      alert('You are not authenticated. Please log in.');
-      return;
-    }
-
-    // Generate the file URL based on file ID
-    const fileUrl = `http://127.0.0.1:8000/api/files/view/${file.id}/`;
-
-    // Open the file in a new tab
-    window.open(fileUrl, '_blank');
   }
 
   //open folder
@@ -443,50 +364,37 @@ uploadFiles(formData: FormData, isFolder: boolean) {
     });
   }
   
-  //async fetchFiles() {
-    //const token = this.authService.getToken();
-    //const response = await axios.get('http://127.0.0.1:8000/api/files/', {
-     // headers: { Authorization: `Token ${token}` },
-    //});
-  
-    //this.files = response.data.map((file: File) => ({
-      //id: file.id,
-      //name: file.filename, // Correct reference
-      //size: file.size,
-      //modified: file.modified,
-    //}));
-  //}
 
   async fetchFilesAndFolders() {
     const token = this.authService.getToken();
     try {
-      const response = await axios.get(`${this.apiUrl}/folders/`, {
+      const response = await axios.get('http://127.0.0.1:8000/api/folders/', {
         headers: { Authorization: `Token ${token}` },
       });
       const data = response.data;
   
-      // Process folders
-      const folders = data.folders.map((folder: any) => ({
-        id: folder.id,
-        name: folder.name,
-        type: 'folder', // Explicitly mark as folder
-        parentFolder: folder.parent_folder,
-        modified: folder.created_at,
-      }));
-  
-      // Process files
-      const files = data.files.map((file: any) => ({
-        id: file.id,
-        name: file.file_name, // Adjust field to match backend
-        size: file.size,
-        type: 'file', // Explicitly mark as file
-        modified: file.created_at,
-      }));
-  
-      // Merge folders and files into a single list
-      this.files = [...folders, ...files];
+      // Map files and folders for display
+      this.files = [
+        ...data.folders.map((folder: any) => ({
+          id: folder.id,
+          name: folder.name,
+          type: 'folder',
+          modified: folder.created_at, // Ensure 'created_at' exists for folders
+          owner: folder.owner?.username || 'Unknown', // Make sure 'owner' and 'username' exist for folders
+        })),
+        ...data.files.map((file: any) => ({
+          id: file.id,
+          name: file.file_name,
+          size: this.formatFileSize(file.size),
+          owner: file.user_id?.username || 'Unknown', // Ensure 'user_id' and 'username' exist
+          modified: file.created_at, // 'created_at' for files
+          isStarred: file.is_starred,
+          isDeleted: file.is_deleted,
+          type: 'file',
+        })),
+      ];
     } catch (error) {
-      console.error('Error fetching folders and files:', error);
+      console.error('Error fetching files and folders:', error);
     }
   }
   
@@ -563,24 +471,6 @@ uploadFiles(formData: FormData, isFolder: boolean) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
   }
 
-  // Function to preview file metadata
-  previewFile(fileId: number): void {
-    this.loading = true; // Start loading indicator
-    this.fileService.getFileMetadata(fileId).subscribe(
-      (data) => {
-        this.previewUrl = data.url; // Set preview URL
-        this.fileType = data.type || 'application/octet-stream'; // Default MIME type
-        this.fileSize = this.formatBytes(data.size); // Format file size
-        this.showPreview = true; // Display the preview modal
-        this.loading = false; // Stop loading
-      },
-      (error: HttpErrorResponse) => {
-        console.error('Error fetching file preview:', error.message);
-        this.loading = false; // Stop loading on error
-      }
-    );
-  }
-
   shareFile(fileId: number): void {
     const dialogRef = this.dialog.open(ShareDialogComponent, {
         width: '400px',
@@ -595,10 +485,8 @@ uploadFiles(formData: FormData, isFolder: boolean) {
             );
         }
     });
+  }
 }
-}
-
-  
 
 
 

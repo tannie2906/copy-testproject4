@@ -34,6 +34,10 @@ INSTALLED_APPS = [
     'myapp',
     'corsheaders',
     'django_extensions',
+    'django_otp', #two factor
+    'django_otp.plugins.otp_totp',  # For time-based one-time passwords
+    'django_otp.plugins.otp_static',  # For static passwords (backup)
+    'two_factor',
 ]
 
 MIDDLEWARE = [
@@ -46,6 +50,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django_otp.middleware.OTPMiddleware', #two factor
 ]
 
 ROOT_URLCONF = 'testproject.urls'

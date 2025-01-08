@@ -145,25 +145,6 @@ class ShareFileView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
-#def upload_folder(request):
- #   if request.method == 'POST':
-  #      try:
-   #         for key, file in request.FILES.items():
-    #            folder_path, filename = os.path.split(key)  # Extract folder structure and filename
-     #           upload_path = os.path.join(settings.MEDIA_ROOT, 'uploads', folder_path)  # Specify base path
-      #          os.makedirs(upload_path, exist_ok=True)  # Ensure folders are created
-
-                # Save file chunks
-       #         with open(os.path.join(upload_path, filename), 'wb+') as destination:
-        #            for chunk in file.chunks():
-         #               destination.write(chunk)
-#
- #           return JsonResponse({'message': 'Folders uploaded successfully!'})
-  #      except Exception as e:
-   #         return JsonResponse({'error': str(e)}, status=500)
-  #  return JsonResponse({'error': 'Invalid request'}, status=400)
-
-
 # File & folder Upload
 class FileUploadView(APIView):
     permission_classes = [IsAuthenticated]
@@ -258,48 +239,6 @@ class FileUploadView(APIView):
         except Exception as e:
             print("Upload Error:", str(e))
             return Response({"error": str(e)}, status=500)
-#class UploadView(APIView):
- #   parser_classes = (MultiPartParser, FormParser) 
-  #  def post(self, request, *args, **kwargs):
-   #     files = request.FILES.getlist('files')
-    #    folder_id = request.data.get('folder_id')  # Ensure this is passed in the request
-
-     #   if not folder_id:
-      #      return Response({"error": "Folder ID is required."}, status=400)
-
-       # try:
-        #    folder = Folder.objects.get(id=folder_id)
-       # except Folder.DoesNotExist:
-        #    return Response({"error": "Folder does not exist."}, status=404)
-
-      #  for file in files:
-       #     try:
-        #        File.objects.create(
-         #           file=file,
-          #          folder=folder,
-           #         user=request.user,
-            #        file_name=file.name,
-             #       size=file.size
-              #  )
-          #  except Exception as e:
-           #     print(f"Error while creating file record: {e}")
-            #    return Response({"error": str(e)}, status=500)
-
-       # return Response({"message": "Files uploaded successfully."}, status=201)
-
-#class FolderUploadView(APIView):
- #   def post(self, request):
-  #      folder_name = request.data.get('name')
-   #     parent_folder_id = request.data.get('parent_folder')
-
-    #    # Retrieve parent folder if provided, otherwise it's a root folder
-     #   parent_folder = Folder.objects.get(id=parent_folder_id) if parent_folder_id else None
-
-      #  # Create the new folder
-       # new_folder = Folder.objects.create(name=folder_name, parent_folder=parent_folder)
-        
-    #    # Return the serialized folder data
-     #   return Response(FolderSerializer(new_folder).data, status=201)
 
 # ViewSet for files
 class FileViewSet(viewsets.ModelViewSet):
@@ -350,7 +289,6 @@ class FolderView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         print("Validation Errors:", serializer.errors)  # Debugging
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class FolderViewSet(viewsets.ModelViewSet):
     queryset = Folder.objects.all()
@@ -521,7 +459,7 @@ class DownloadFileView(APIView):
             response['Content-Disposition'] = f'attachment; filename="{file.file_name}"'
 
             # Re-encrypt after sending
-            encrypt_file(file_path)
+           # encrypt_file(file_path)
 
             return response
 
