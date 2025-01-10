@@ -11,6 +11,9 @@ import { Router } from '@angular/router';
 export class LoginComponent {
   username: string = '';
   password: string = '';
+  email: string = '';
+  otp: string = '';
+  otpSent: boolean = false;
 
   constructor(private authService: AuthService, private router: Router) {}
 
@@ -20,7 +23,10 @@ export class LoginComponent {
         // Save the token in local storage
         localStorage.setItem('token', response.token);
         // Redirect to the home page on successful login
-        this.router.navigate(['/home']);
+
+        // Login successful
+       // this.router.navigate(['/setup-2fa']); // Redirect to 2FA setup
+        this.router.navigate(['/setup-2fa']);
       },
       (error) => {
         alert('Login failed'); // Show an error message if login fails

@@ -1,6 +1,8 @@
-from datetime import timezone
+import base64
+from datetime import datetime, timezone
 import mimetypes
 from pathlib import Path
+import random
 import re
 import shutil
 from rest_framework.views import APIView
@@ -48,6 +50,26 @@ from myapp.models import File, DeletedFile
 from .encryption_utils import encrypt_file
 from .encryption_utils import decrypt_file
 from django.contrib.auth import get_user_model
+from django_otp.plugins.otp_totp.models import TOTPDevice
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import ensure_csrf_cookie
+from rest_framework.authentication import TokenAuthentication
+from django.middleware.csrf import get_token
+from secrets import token_hex
+import traceback
+import qrcode
+from io import BytesIO
+from datetime import timedelta
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from django_otp.decorators import otp_required
+from django_otp.plugins.otp_totp.models import TOTPDevice
+from django.contrib.auth import login, authenticate
+import pyqrcode
+from django.views.decorators.http import require_POST
+import base64
+import pyotp
+from rest_framework.parsers import JSONParser
 
 import json
 import logging
@@ -371,6 +393,12 @@ class ProfileView(APIView):
         user.last_name = request.data.get('last_name', user.last_name)
         user.email = request.data.get('email', user.email)
 
+        # Generate OTP secret if not already set
+        if not profile.otp_secret:
+            import pyotp
+            profile.otp_secret = pyotp.random_base32()
+            profile.save()
+
         # Check if a profile picture is being uploaded
         if 'profile_picture' in request.FILES:
             profile.profile_picture = request.FILES['profile_picture']  # Save the uploaded picture
@@ -388,6 +416,12 @@ class RegisterUserView(APIView):
         serializer = UserRegistrationSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
+
+            # Generate and save the OTP secret
+            profile = user.profile  # Assuming the Profile is created via signal or manually
+            profile.otp_secret = pyotp.random_base32()
+            profile.save()
+
             token, _ = Token.objects.get_or_create(user=user)
             return Response({"message": "User registered successfully", "token": token.key}, status=201)
         return Response(serializer.errors, status=400)
@@ -1064,3 +1098,132 @@ def share_file(request):
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Invalid HTTP method'}, status=405)
+
+def custom_login(request):
+    if request.method == 'POST':
+        username = request.POST['username']
+        password = request.POST['password']
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            request.session['pre_2fa_user_id'] = user.id
+            return redirect('verify_2fa')
+    return render(request, 'login.html')
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def verify_2fa(request):
+    try:
+        data = request.data
+        otp = data.get('otp')
+        
+        if not otp:
+            logger.error("No OTP provided in request")
+            return JsonResponse({'error': 'OTP is required'}, status=400)
+
+        # Log the received OTP
+        logger.info(f"Received OTP: {otp}")
+
+        user = request.user
+        base32_secret = user.profile.otp_secret
+        
+        if not base32_secret:
+            logger.error("No OTP secret available for the user")
+            return JsonResponse({'error': 'No OTP secret configured'}, status=400)
+
+        # Log the secret being used
+        logger.info(f"Using secret: {base32_secret}")
+
+        totp = pyotp.TOTP(base32_secret)
+
+        # Generate the current OTP on the server and log it
+        server_otp = totp.now()
+        logger.info(f"Generated OTP on Server: {server_otp}")
+
+        # Validate the received OTP
+        if totp.verify(otp, valid_window=1):  # ±30 seconds drift allowed
+            logger.info("OTP is valid")
+            return JsonResponse({'success': True, 'message': '2FA verified successfully'})
+        else:
+            logger.error("Invalid OTP provided")
+            return JsonResponse({'error': 'Invalid OTP'}, status=400)
+
+    except Exception as e:
+        logger.error("Error during OTP verification", exc_info=True)
+        return JsonResponse({'error': 'Server error'}, status=500)
+
+
+
+#@api_view(['POST'])
+#@permission_classes([IsAuthenticated])
+#def setup_2fa(request):
+ #   user = request.user
+  #  device, created = TOTPDevice.objects.get_or_create(user=user, name='default')
+
+   # if created:
+    #    device.save()
+
+ #   qr_code_url = device.config_url
+
+    # Generate QR Code
+ #   qr = qrcode.make(qr_code_url)
+  #  buffer = BytesIO()
+   # qr.save(buffer, format='PNG')
+ #   base64_image = b64encode(buffer.getvalue()).decode()
+
+  #  return JsonResponse({"qr_code": f"data:image/png;base64,{base64_image}"})
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def setup_2fa(request):
+    user = request.user
+    profile = user.profile
+
+    if not profile.otp_secret:
+        profile.otp_secret = pyotp.random_base32()  # Generate Base32 secret
+        profile.save()
+
+    base32_secret = profile.otp_secret
+
+    otp_url = pyotp.totp.TOTP(base32_secret).provisioning_uri(
+        name=user.username,
+        issuer_name="MyApp"  # Replace with your app's name
+    )
+
+    qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=4)
+    qr.add_data(otp_url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+
+    buffer = BytesIO()
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+    img_str = base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+    return JsonResponse({
+        "qr_code": f"data:image/png;base64,{img_str}",
+        "otp_url": otp_url,
+        "secret": base32_secret  # Optional for manual setup
+    })
+
+
+class Enable2FAView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        # Get the user's profile
+        profile = request.user.profile
+
+        # Check if OTP secret already exists
+        if not profile.otp_secret:
+            # Generate and save OTP secret
+            profile.otp_secret = pyotp.random_base32()
+            profile.save()
+
+        # Return the secret to the user to display QR code
+        return Response({"otp_secret": profile.otp_secret}, status=status.HTTP_200_OK)
+    
+@receiver(post_save, sender=User)
+def create_or_update_user_profile(sender, instance, created, **kwargs):
+    if created:
+        Profile.objects.create(user=instance)
+    instance.profile.save()

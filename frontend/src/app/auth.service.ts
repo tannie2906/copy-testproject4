@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { HttpRequest, HttpHandler, HttpEvent, HttpInterceptor } from '@angular/common/http';
-import { Observable, BehaviorSubject } from 'rxjs';
-import { tap } from 'rxjs/operators';  // Add this import
+import { Observable, BehaviorSubject, throwError } from 'rxjs';
+import { catchError, tap } from 'rxjs/operators';  // Add this import
 
 import axios from 'axios';
 
@@ -17,10 +17,18 @@ export class AuthService {
   private profileSubject = new BehaviorSubject<any>(null);
   public profile$ = this.profileSubject.asObservable();
   private token: string | null = null; 
+  private twoFactorVerified: boolean = false;
   
-
   constructor(private http: HttpClient) {}
 
+  private getCSRFToken(): string | null {
+    const csrfToken = document.cookie
+      .split('; ')
+      .find((row) => row.startsWith('csrftoken='))
+      ?.split('=')[1];
+    return csrfToken || null;
+  }
+  
   login(username: string, password: string) {
     return this.http.post<any>(`${this.apiUrl}/login/`, { username, password }).pipe(
       tap((response: any) => {
@@ -44,6 +52,51 @@ export class AuthService {
     return localStorage.getItem(this.tokenKey); // Returns string or null
   }
 
+  // Check 2FA verification status
+  is2FAVerified(): boolean {
+    return this.twoFactorVerified;
+  }
+
+  // Update 2FA verification status
+  set2FAVerified(status: boolean): void {
+    this.twoFactorVerified = status;
+  }
+
+  setup2FA(): Observable<any> {
+    const token = this.getToken();
+    const headers = new HttpHeaders({
+      'Authorization': `Token ${token}`,
+      'X-CSRFToken': this.getCSRFToken() || '',
+    });
+
+    return this.http.post(`${this.apiUrl}/setup-2fa/`, {}, { headers });
+  }
+
+  verifyOtp(otpCode: string): Observable<any> {
+    const token = this.getToken();
+    if (!token) {
+      console.error('Token not found!');
+      return throwError('Token is required');
+    }
+  
+    const headers = new HttpHeaders({
+      'Authorization': `Token ${token}`,
+      'Content-Type': 'application/json',
+    });
+  
+    console.log('Sending OTP payload:', { otp: otpCode });
+  
+    return this.http.post(`${this.apiUrl}/verify-2fa/`, { otp: otpCode }, { headers }).pipe(
+      tap((response: any) => console.log('Verification successful:', response)),
+      catchError((error) => {
+        console.error('Verification failed:', error);
+        return throwError(error);
+      })
+    );
+  }
+  
+  
+ 
   logout(): void {
     localStorage.removeItem(this.tokenKey);
     this.isLoggedIn = false;

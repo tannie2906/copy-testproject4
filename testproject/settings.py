@@ -1,6 +1,9 @@
 from pathlib import Path
 import logging
+import certifi
+import ssl
 import os
+
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -34,10 +37,11 @@ INSTALLED_APPS = [
     'myapp',
     'corsheaders',
     'django_extensions',
-    'django_otp', #two factor
-    'django_otp.plugins.otp_totp',  # For time-based one-time passwords
-    'django_otp.plugins.otp_static',  # For static passwords (backup)
-    'two_factor',
+    'django_otp',
+    'django_otp.plugins.otp_totp',  # Ensure this is included for TOTP devices
+    'django_otp.plugins.otp_static',
+    #'django_otp.plugins.otp_totp',  # For TOTP-based 2FA
+    #'two_factor',
 ]
 
 MIDDLEWARE = [
@@ -46,11 +50,10 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django_otp.middleware.OTPMiddleware',  # Ensure this is added
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'django_otp.middleware.OTPMiddleware', #two factor
 ]
 
 ROOT_URLCONF = 'testproject.urls'
@@ -164,13 +167,28 @@ CSRF_COOKIE_HTTPONLY = False  # Ensures the CSRF token is accessible by JavaScri
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
-#for email
+ssl._create_default_https_context = ssl._create_unverified_context
+ssl.get_default_verify_paths = lambda: ssl.VerifyPaths(cafile=certifi.where())
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+)
+
+# Email configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
+EMAIL_PORT = 587 #TLS
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'your-email@gmail.com'
-EMAIL_HOST_PASSWORD = 'your-email-password-or-app-password'
+EMAIL_HOST_USER = 'danyin161@gmail.com'  # Your Gmail
+EMAIL_HOST_PASSWORD = 'hxie smfw ehko doyl'  # Use an app-specific password for Gmail
+
+# SSL context to handle CA file
+EMAIL_SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
+
+# SSL context
+context = ssl.create_default_context(cafile=certifi.where())
+EMAIL_SSL_CONTEXT = context
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.mail.yahoo.com'
@@ -212,3 +230,25 @@ class IgnoreBrokenPipeFilter(logging.Filter):
 logging.getLogger("django.server").addFilter(IgnoreBrokenPipeFilter())
 
 DEBUG = True
+
+EMAIL_USE_LOCALTIME = True
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+        'django.utils.autoreload': {
+            'handlers': ['console'],
+            'level': 'WARNING',  # Suppress verbose file monitoring messages
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+}

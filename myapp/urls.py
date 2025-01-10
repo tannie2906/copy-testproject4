@@ -1,33 +1,28 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+
+from myapp import admin
 from .views import FileUploadView, FileListView, CustomAuthToken, ProfileView, RegisterUserView, UploadProfilePictureView,  DeletedFilesView 
 #from .views import FileViewSet
 from . import views
 from .views import FileView, RestoreFileView, PermanentlyDeleteFilesView #DeletedFileDeleteView
-from .views import EmptyTrashView, FileSearchView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (
-    FileUploadView,
-    RenameFileView,
-    DeleteFileView,
-    RestoreFileView,
-    DownloadFileView,
-    ShareFileView,
-    FilePreviewView,
-    FileMetadataView,
-    ChangePasswordView,
-    DeleteAccountView,
-    FolderView,
-    FolderListView,
-    FolderViewSet,
-    #UploadView,
-    FolderContentView,
-    ShareFileView,
-    
+    FileUploadView, FileListView, CustomAuthToken, ProfileView, RegisterUserView,
+    UploadProfilePictureView, DeletedFilesView, #Setup2FA, #setup_2fa,# verify_2fa,
+    RenameFileView, DeleteFileView, RestoreFileView, DownloadFileView,
+    ShareFileView, FilePreviewView, FileMetadataView, ChangePasswordView,
+    DeleteAccountView, FolderView, FolderListView, FolderViewSet, FileSearchView,
+    EmptyTrashView, FolderContentView, #Verify2FA, QRGeneratorView,
 )
+from two_factor.views import SetupView 
+from .views import CustomAuthToken
+from django_otp.decorators import otp_required
+from . import views
+
+import django.contrib.admin as django_admin
 
 router = DefaultRouter()
-#router.register(r'files', FileViewSet, basename='file')
 router.register(r'folders', FolderViewSet, basename='folder')
 
 
@@ -39,7 +34,17 @@ urlpatterns = [
     path('register/', RegisterUserView.as_view(), name='register'),
     path('token-auth/', TokenObtainPairView.as_view(), name='api_token_auth'),
     path('token-refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('accounts/', include('two_factor.urls', 'two_factor')),
+    
+
+    
+    path('verify-2fa/', views.verify_2fa, name='verify_2fa'),
+    path('setup-2fa/', views.setup_2fa, name='setup_2fa'),
+
+    # Admin (exclude from 2FA)
+    path('admin/', django_admin.site.urls), # Correct way to include the admin site
+
+    #path('', otp_required(views.home), name='home'),  # Apply 2FA here
+   # path('admin/', include('django.contrib.admin.urls')),  # No 2FA for admin
 
     #update setting
     path('settings/', views.get_settings, name='get_settings'),  # GET endpoint

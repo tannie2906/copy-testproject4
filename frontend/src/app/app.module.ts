@@ -1,11 +1,11 @@
-import { NgModule } from '@angular/core';
+import { NgModule, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { AppRoutingModule } from './app-routing.module'; // Make sure this is correct
 import { AppComponent } from './app.component';
 import { LoginComponent } from './login/login.component';  // Correct path
 import { ProfileComponent } from './profile/profile.component';
 import { SettingsComponent } from './settings/settings.component';
-import { FormsModule } from '@angular/forms';  // Import FormsModule for ngModel
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';  // Import FormsModule for ngModel
 import { HttpClientModule } from '@angular/common/http';
 import { RegisterComponent } from './register/register.component';
 import { HomeComponent } from './home/home.component';
@@ -27,9 +27,11 @@ import { ShareDialogComponent } from './share-dialog/share-dialog.component';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDialogModule } from '@angular/material/dialog';
-import { MatButtonModule } from '@angular/material/button'; //for dialog box
-import { NgxQrcodeModule } from 'ngx-qrcode2';
-import { QrCodeComponent } from './qr-code/qr-code.component'; //for 2fa
+import { MatButtonModule } from '@angular/material/button';
+import { Setup2faComponent } from './setup2fa/setup2fa.component'; //for dialog box
+//import { QRCodeModule } from 'angularx-qrcode'
+//import { QrCodeComponent } from './qr-code/qr-code.component';  
+
 
 
 @NgModule({
@@ -48,20 +50,24 @@ import { QrCodeComponent } from './qr-code/qr-code.component'; //for 2fa
     FilePreviewComponent,
     FormatBytesPipe,
     ShareDialogComponent,
-    QrCodeComponent
+    Setup2faComponent,
+    //QrCodeComponent,
+    
+
   ],
   imports: [
+    FormsModule,
+    ReactiveFormsModule, 
     BrowserModule,
-    AppRoutingModule,  // Ensure this is imported
-    FormsModule,       // Import FormsModule for ngModel binding
-    HttpClientModule, 
+    AppRoutingModule,
+    HttpClientModule,
     BrowserAnimationsModule,
     MatFormFieldModule,
     MatInputModule,
     MatDialogModule,
     MatButtonModule,
-    NgxQrcodeModule, // Import the module here
-    
+   // QRCodeModule,
+   
   ],
   providers: [
     FileService,
@@ -73,6 +79,7 @@ import { QrCodeComponent } from './qr-code/qr-code.component'; //for 2fa
       multi: true 
     },
   ],
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
   bootstrap: [AppComponent],
 })
 export class AppModule {}

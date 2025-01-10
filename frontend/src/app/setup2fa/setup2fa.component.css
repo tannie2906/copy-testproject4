@@ -1,0 +1,28 @@
+.setup-2fa {
+    text-align: center;
+  }
+  
+  img {
+    width: 200px;
+    height: 200px;
+    margin: 20px 0;
+  }
+  
+  input {
+    margin: 10px;
+    padding: 5px;
+    width: 200px;
+  }
+  
+  button {
+    padding: 5px 10px;
+  }
+  
+  .success {
+    color: green;
+  }
+  
+  .error {
+    color: red;
+  }
+  

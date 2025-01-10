@@ -7,6 +7,7 @@ from django.db import models
 from django import forms
 import uuid
 import os
+from django_otp.models import Device
 
 def custom_file_name(instance, filename):
     # Extract file extension
@@ -90,6 +91,9 @@ class Profile(models.Model):
     last_name = models.CharField(max_length=30, blank=True)
     email = models.EmailField(max_length=254, blank=True)
     profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)
+    otp = models.IntegerField(null=True, blank=True)  # Field for storing OTP
+    otp_created_at = models.DateTimeField(null=True, blank=True)  # Field for OTP timestamp
+    otp_secret = models.CharField(max_length=255, blank=True, null=True) #for 2fa
 
     def __str__(self):
         return self.user.username  
@@ -118,4 +122,5 @@ class DeletedFile(models.Model):
     def __str__(self):
         return self.file_name
 
-
+class MyOTPDevice(Device):
+    pass  # Extend or customize if needed
