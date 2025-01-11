@@ -28,6 +28,7 @@ export class AuthService {
       ?.split('=')[1];
     return csrfToken || null;
   }
+
   
   login(username: string, password: string) {
     return this.http.post<any>(`${this.apiUrl}/login/`, { username, password }).pipe(
@@ -94,8 +95,6 @@ export class AuthService {
       })
     );
   }
-  
-  
  
   logout(): void {
     localStorage.removeItem(this.tokenKey);
@@ -135,4 +134,34 @@ export class AuthService {
   register(userData: any) {
     return this.http.post(this.registerUrl, userData);
   }
+
+  initializeCSRF(): Observable<any> {
+    return this.http.get('http://127.0.0.1:8000/api/password-reset-request', { withCredentials: true });
+ }
+
+// Request password reset
+requestPasswordReset(email: string): Observable<any> {
+  const csrfToken = this.getCSRFToken(); // Fetch CSRF token from cookies
+  const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'X-CSRFToken': csrfToken || '', // Attach CSRF token
+  });
+
+  return this.http.post(`${this.apiUrl}/password-reset-request`, { email }, { headers })
+      .pipe(catchError((error) => throwError(error)));
 }
+
+// Reset password
+resetPassword(token: string, newPassword: string): Observable<any> {
+  const csrfToken = this.getCSRFToken(); // Fetch CSRF token if needed
+  const headers = new HttpHeaders({
+    'Content-Type': 'application/json',
+    'X-CSRFToken': csrfToken || '',
+  });
+
+  return this.http.post(`${this.apiUrl}/password-reset-confirm/${token}`, { new_password: newPassword }, { headers })
+    .pipe(catchError((error) => throwError(error)));
+}
+}
+
+

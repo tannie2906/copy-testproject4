@@ -93,7 +93,7 @@ class Profile(models.Model):
     profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)
     otp = models.IntegerField(null=True, blank=True)  # Field for storing OTP
     otp_created_at = models.DateTimeField(null=True, blank=True)  # Field for OTP timestamp
-    otp_secret = models.CharField(max_length=255, blank=True, null=True) #for 2fa
+    otp_secret = models.CharField(max_length=32, null=True, blank=True) 
 
     def __str__(self):
         return self.user.username  

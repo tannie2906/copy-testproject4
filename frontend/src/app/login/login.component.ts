@@ -17,6 +17,13 @@ export class LoginComponent {
 
   constructor(private authService: AuthService, private router: Router) {}
 
+  ngOnInit() {
+    this.authService.initializeCSRF().subscribe({
+        next: () => console.log('CSRF token initialized'),
+        error: (error) => console.error('Failed to initialize CSRF', error),
+    });
+}
+
   login() {
     this.authService.login(this.username, this.password).subscribe(
       (response) => {

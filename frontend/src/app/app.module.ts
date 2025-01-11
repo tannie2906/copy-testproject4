@@ -28,7 +28,9 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
-import { Setup2faComponent } from './setup2fa/setup2fa.component'; //for dialog box
+import { Setup2faComponent } from './setup2fa/setup2fa.component';
+import { ForgotPasswordComponent } from './forgot-password/forgot-password.component';
+import { ResetPasswordComponent } from './reset-password/reset-password.component'; //for dialog box
 //import { QRCodeModule } from 'angularx-qrcode'
 //import { QrCodeComponent } from './qr-code/qr-code.component';  
 
@@ -51,6 +53,8 @@ import { Setup2faComponent } from './setup2fa/setup2fa.component'; //for dialog 
     FormatBytesPipe,
     ShareDialogComponent,
     Setup2faComponent,
+    ForgotPasswordComponent,
+    ResetPasswordComponent,
     //QrCodeComponent,
     
 

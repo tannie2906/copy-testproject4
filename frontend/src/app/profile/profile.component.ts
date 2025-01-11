@@ -67,8 +67,6 @@ export class ProfileComponent implements OnInit {
       }
     });
   }
-  
-  
 
   onFileChange(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -110,7 +108,6 @@ export class ProfileComponent implements OnInit {
       });
     }
   }
-  
 
   toggleEditMode(): void {
     this.isEditing = !this.isEditing;

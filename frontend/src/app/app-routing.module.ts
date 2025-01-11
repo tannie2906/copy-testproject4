@@ -14,6 +14,8 @@ import { SearchComponent } from './search/search.component';
 import { FilePreviewComponent } from './file-preview/file-preview.component';
 //import { QrCodeComponent } from './qr-code/qr-code.component';
 import { Setup2faComponent } from '/Users/intan/testproject/frontend/src/app/setup2fa/setup2fa.component';
+import { ForgotPasswordComponent } from './forgot-password/forgot-password.component';
+import { ResetPasswordComponent } from './reset-password/reset-password.component';
 
 const routes: Routes = [
   { path: '', redirectTo: '/home', pathMatch: 'full' }, // Redirect to home page
@@ -29,8 +31,9 @@ const routes: Routes = [
   // { path: '', redirectTo: '/login', pathMatch: 'full' },  // Redirect to login by default
   { path: 'file-preview/:id', component: FilePreviewComponent },
   { path: '', component: FolderComponent }, 
-  //{ path: '2fa/setup', component: QrCodeComponent },
   { path: 'setup-2fa', component: Setup2faComponent },
+  { path: 'forgot-password', component: ForgotPasswordComponent },
+  { path: 'reset-password/:token', component: ResetPasswordComponent },
 ];
 
 @NgModule({

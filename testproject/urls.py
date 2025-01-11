@@ -14,6 +14,7 @@ urlpatterns = [
     path('token-auth/', TokenObtainPairView.as_view(), name='api_token_auth'),
     path('token-refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     
+    path('send-email/', views.send_test_email, name='send-email'),
 ]
 
 if settings.DEBUG:

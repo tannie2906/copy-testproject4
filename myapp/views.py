@@ -43,6 +43,9 @@ from django.contrib.auth.password_validation import validate_password
 from django.utils.decorators import method_decorator
 from django.db import transaction
 
+#from myapp.gmail_api import send_email
+from testproject.settings import EMAIL_HOST_USER
+
 
 from .models import DeletedFile, UploadedFile, File, SharedFile, Profile, Folder
 from .serializers import DeletedFilesSerializer, UserSerializer, UploadedFileSerializer, UserRegistrationSerializer, FileSerializer, ProfilePictureSerializer, ProfileSerializer, FolderSerializer
@@ -70,6 +73,20 @@ from django.views.decorators.http import require_POST
 import base64
 import pyotp
 from rest_framework.parsers import JSONParser
+from django.utils.crypto import get_random_string
+from django.contrib.auth.hashers import make_password
+from email.mime.text import MIMEText
+from googleapiclient.discovery import build
+from get_gmail_credentials import get_credentials 
+from .serializers import PasswordResetRequestSerializer, PasswordResetConfirmSerializer
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.core.mail import send_mail
+from myapp.gmail_api import send_reset_email 
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+#from myapp.gmail_api import send_email
+#from myapp.email_utils import send_mail # Import Gmail API function
 
 import json
 import logging
@@ -355,7 +372,7 @@ class FolderListView(APIView):
             'files': file_serializer.data
         })
 
-# User Authentication
+# User Authentication and login
 class CustomAuthToken(APIView):
     permission_classes = [AllowAny]
 
@@ -368,6 +385,54 @@ class CustomAuthToken(APIView):
             token, _ = Token.objects.get_or_create(user=user)
             return Response({"token": token.key})
         return Response({"error": "Invalid credentials"}, status=400)
+
+#password reset 
+@api_view(['POST'])
+@permission_classes([])  # You can specify permissions if needed
+def password_reset_request(request):
+    """Send a password reset email via Gmail API."""
+    email = request.data.get('email')  # Use request.data for JSON requests
+    try:
+        user = User.objects.get(email=email)  # Find the user by email
+        token = default_token_generator.make_token(user)  # Generate a reset token
+        uid = urlsafe_base64_encode(force_bytes(user.pk))  # Properly encode user ID
+        reset_url = f'http://localhost:4200/reset-password/{uid}/{token}/'  # Construct the reset URL
+
+        # Send the email with the reset link
+        send_reset_email(user.email, reset_url)
+
+        # Send a JSON response
+        return Response({"message": "Password reset email sent successfully"}, status=200)
+
+    except User.DoesNotExist:
+        # Send a JSON response for error
+        return Response({"error": "Email address not found"}, status=404)
+
+@api_view(['POST'])
+@permission_classes([])  # Update if permissions are required
+def password_reset_confirm(request, token):
+    """
+    Handles password reset confirmation.
+    """
+    serializer = PasswordResetConfirmSerializer(data=request.data)
+    if serializer.is_valid():
+        try:
+            # Decode the token and get user
+            uid = urlsafe_base64_decode(token.split('-')[0]).decode()
+            user = User.objects.get(pk=uid)
+
+            # Validate token
+            if not default_token_generator.check_token(user, token.split('-')[1]):
+                return Response({"error": "Invalid or expired token."}, status=400)
+
+            # Set new password
+            user.set_password(serializer.validated_data['new_password'])
+            user.save()
+
+            return Response({"success": "Password has been reset."})
+        except Exception as e:
+            return Response({"error": "Invalid token or user not found."}, status=400)
+    return Response(serializer.errors, status=400)
 
 # Profile View
 class ProfileView(APIView):
@@ -1227,3 +1292,19 @@ def create_or_update_user_profile(sender, instance, created, **kwargs):
     if created:
         Profile.objects.create(user=instance)
     instance.profile.save()
+
+
+#testing email
+def send_test_email(request):
+    """Django view to send a test email."""
+    try:
+        to_email = 'recipient@example.com'
+        subject = 'Test Email from Django'
+        body = 'This is a test email sent via the Gmail API.'
+
+        # Send the email
+        result = send_email(to_email, subject, body)
+
+        return JsonResponse({'status': 'success', 'message': result})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})

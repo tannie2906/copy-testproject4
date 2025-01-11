@@ -40,7 +40,6 @@ class UploadedFileSerializer(serializers.ModelSerializer):
     def get_size(self, obj):
         return obj.file.size  # Get the file size in bytes
 
-
 class UserRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -86,7 +85,11 @@ class ProfileSerializer(serializers.ModelSerializer):
         representation['email'] = user.email
         return representation
     
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
 
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    new_password = serializers.CharField(min_length=8)
 
 
 

@@ -178,10 +178,16 @@ logging.basicConfig(
 # Email configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587 #TLS
+EMAIL_PORT = 587  # TLS
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'danyin161@gmail.com'  # Your Gmail
-EMAIL_HOST_PASSWORD = 'hxie smfw ehko doyl'  # Use an app-specific password for Gmail
+#EMAIL_USE_SSL = True
+EMAIL_HOST_USER = 'danyin161@gmail.com'  # Your Gmail address
+EMAIL_HOST_PASSWORD = 'ercddvdzzlylzmvn'  # The app-specific password
+
+DEFAULT_FROM_EMAIL = 'danyin161@gmail.com' 
+
+# Debugging settingsx
+EMAIL_DEBUG = True
 
 # SSL context to handle CA file
 EMAIL_SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())

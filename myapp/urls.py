@@ -19,6 +19,7 @@ from two_factor.views import SetupView
 from .views import CustomAuthToken
 from django_otp.decorators import otp_required
 from . import views
+from myapp.views import password_reset_request, password_reset_confirm
 
 import django.contrib.admin as django_admin
 
@@ -36,9 +37,11 @@ urlpatterns = [
     path('token-refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     
 
-    
     path('verify-2fa/', views.verify_2fa, name='verify_2fa'),
     path('setup-2fa/', views.setup_2fa, name='setup_2fa'),
+
+    path('password-reset-request', password_reset_request, name='password_reset_request'),
+    path('password-reset-confirm/<str:token>', password_reset_confirm, name='password_reset_confirm'),
 
     # Admin (exclude from 2FA)
     path('admin/', django_admin.site.urls), # Correct way to include the admin site
