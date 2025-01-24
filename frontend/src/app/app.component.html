@@ -2,6 +2,16 @@
   <div class="header">
     <!-- Title -->
     <h1 class="title">SecureShare</h1>
+
+    <!-- app.component.html -->
+<div *ngIf="isAuthenticated">
+  <div *ngFor="let notification of notifications" class="notification">
+    {{ notification }}
+  </div>
+</div>
+
+<!-- Button for testing notification -->
+<button (click)="testNotification()">Test Notification</button>
     
     <!-- Search Bar -->
     <div class="search-container">

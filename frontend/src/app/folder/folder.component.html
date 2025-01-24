@@ -83,10 +83,10 @@
             <a>{{ file.name }}</a>
           </div>
           <div *ngIf="!file.isFolder">
-            <!--<a (click)="onOpenFile(file, $event)">-->
+            <a (click)="onOpenFile(file)">
               <i class="fa fa-file"></i>
               {{ file.name }}
-           <!-- </a> -->
+           </a>
           </div>
         </td>
 

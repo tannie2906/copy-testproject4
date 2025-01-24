@@ -8,6 +8,7 @@ from django import forms
 import uuid
 import os
 from django_otp.models import Device
+from datetime import datetime
 
 def custom_file_name(instance, filename):
     # Extract file extension
@@ -17,29 +18,27 @@ def custom_file_name(instance, filename):
 
 # In your models.py
 class Folder(models.Model):
+    id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255)
-    parent_folder = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='subfolders')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
-    user = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
+    parent_folder = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='subfolders')
 
     def __str__(self):
         return self.name
 
     @property
     def path(self):
-        path_parts = []
-        parent = self.parent_folder
-        while parent:
-            path_parts.insert(0, parent.name)
-            parent = parent.parent_folder
-        return '/'.join(path_parts) + '/' + self.name if path_parts else self.name
+        if self.parent_folder:
+            return os.path.join(self.parent_folder.path, self.name)
+        return self.name
 
-    
 # handling upload file with custom name and storage
 class File(models.Model):
     id = models.AutoField(primary_key=True)
     file = models.FileField(upload_to='uploads/')
-    user_id = models.IntegerField()
+    #user_id = models.IntegerField()
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     file_name = models.CharField(max_length=255)
     deleted_at = models.DateTimeField(null=True, blank=True)
     size = models.IntegerField()
@@ -47,7 +46,7 @@ class File(models.Model):
     is_starred = models.BooleanField(default=False)
     file_path = models.CharField(max_length=500, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    folder = models.ForeignKey(Folder, on_delete=models.CASCADE)
+    folder = models.ForeignKey(Folder, on_delete=models.CASCADE, null=True, blank=True, default=None)
 
 
     # Custom save method
@@ -57,7 +56,6 @@ class File(models.Model):
             extension = os.path.splitext(self.file.name)[1]
             custom_name = f"{slugify(self.file_name)}{extension}"
             self.file.name = os.path.join(folder, custom_name)
-
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -65,13 +63,10 @@ class File(models.Model):
 
 # sharing files with specific users.
 class SharedFile(models.Model):
-    file = models.ForeignKey('File', on_delete=models.CASCADE)  # Replace 'File' with your file model
-    shared_with = models.ForeignKey(User, on_delete=models.CASCADE, related_name='shared_files')
-    shared_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='shared_by')
-    timestamp = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Shared {self.file.name} with {self.shared_with}"
+    file = models.ForeignKey(File, on_delete=models.CASCADE)
+    shared_with = models.EmailField()
+    shared_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="shared_files")
+    created_at = models.DateTimeField(auto_now_add=True)
     
 class UploadedFile(models.Model):
     file_name = models.CharField(max_length=100)
@@ -93,7 +88,8 @@ class Profile(models.Model):
     profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)
     otp = models.IntegerField(null=True, blank=True)  # Field for storing OTP
     otp_created_at = models.DateTimeField(null=True, blank=True)  # Field for OTP timestamp
-    otp_secret = models.CharField(max_length=32, null=True, blank=True) 
+    otp_secret = models.CharField(max_length=255, blank=True, null=True)
+
 
     def __str__(self):
         return self.user.username  
@@ -124,3 +120,12 @@ class DeletedFile(models.Model):
 
 class MyOTPDevice(Device):
     pass  # Extend or customize if needed
+
+class Notification(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    message = models.CharField(max_length=255)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(default=datetime.now)
+
+    def __str__(self):
+        return f'Notification for {self.user.username}: {self.message}'

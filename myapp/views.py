@@ -87,11 +87,16 @@ from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 #from myapp.gmail_api import send_email
 #from myapp.email_utils import send_mail # Import Gmail API function
-
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError 
+from .models import Notification
+from .gmail_api import send_email_via_gmail  # This imports the function from gmail_api.py
+from .utils import create_notification
 import json
 import logging
 import uuid
 import os
+from urllib.parse import urljoin
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -105,84 +110,6 @@ def validate_file_owner(file_id, user):
         return file
     except File.DoesNotExist:
         raise ValidationError("File not found.")
-
-@api_view(['GET'])
-def shared_file_detail(request, share_link):
-    try:
-        shared_file = SharedFile.objects.get(share_link=share_link)
-        file = shared_file.file
-        return Response({
-            "filename": file.filename,
-            "file_url": request.build_absolute_uri(file.file.url),
-            "permissions": shared_file.permissions
-        })
-    except SharedFile.DoesNotExist:
-        return Response({"error": "Shared link not found."}, status=404)
-
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def share_file(request):
-    print("Share file endpoint hit")
-    file_id = request.data.get('file_id')
-    share_with = request.data.get('share_with')  # List of emails
-    print(f"File ID: {file_id}")
-    print(f"Request User: {request.user}")
-
-    if not file_id:
-        return Response({"error": "File ID is required."}, status=400)
-
-    if not isinstance(share_with, list):
-        return Response({"error": "'share_with' must be a list of emails."}, status=400)
-
-    permissions = request.data.get('permissions', 'read')
-
-    # Validate file
-    try:
-        # Check ownership explicitly
-        file = File.objects.get(id=file_id)
-        if file.user != request.user:
-            print(f"File with ID {file_id} is not owned by user {request.user}")
-            return Response({"error": "Unauthorized to access this file."}, status=403)
-
-        print(f"File fetched successfully: {file}")
-    except File.DoesNotExist:
-        print(f"File with ID {file_id} not found.")
-        return Response({"error": "File not found."}, status=404)
-
-    # Share file with each user
-    share_links = []
-    for email in share_with:
-        shared_file = SharedFile.objects.create(
-            file=file,
-            shared_with=email,
-            permissions=permissions
-        )
-        share_link = request.build_absolute_uri(
-            reverse('shared_file_detail', kwargs={'share_link': shared_file.share_link})
-        )
-        share_links.append({
-            "shared_with": email,
-            "share_link": share_link,
-            "permissions": permissions
-        })
-
-    return Response({"file_id": file_id, "share_links": share_links}, status=201)
-
-# File Sharing API
-class ShareFileView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, file_id):
-        try:
-            file_instance = get_object_or_404(File, id=file_id, user_id=request.user.id)
-
-            # Mock share logic (e.g., generating a shareable link)
-            share_link = f"http://example.com/share/{file_id}"
-
-            return Response({"message": "File shared successfully.", "share_link": share_link}, status=200)
-        except Exception as e:
-            return Response({"error": str(e)}, status=500)
 
 # File & folder Upload
 class FileUploadView(APIView):
@@ -399,7 +326,7 @@ def password_reset_request(request):
         reset_url = f'http://localhost:4200/reset-password/{uid}/{token}/'  # Construct the reset URL
 
         # Send the email with the reset link
-        send_reset_email(user.email, reset_url)
+        send_reset_email(user.email, uid, token)
 
         # Send a JSON response
         return Response({"message": "Password reset email sent successfully"}, status=200)
@@ -410,19 +337,19 @@ def password_reset_request(request):
 
 @api_view(['POST'])
 @permission_classes([])  # Update if permissions are required
-def password_reset_confirm(request, token):
+def password_reset_confirm(request, uidb64, token):
     """
     Handles password reset confirmation.
     """
     serializer = PasswordResetConfirmSerializer(data=request.data)
     if serializer.is_valid():
         try:
-            # Decode the token and get user
-            uid = urlsafe_base64_decode(token.split('-')[0]).decode()
+            # Decode the UID and token
+            uid = urlsafe_base64_decode(uidb64).decode()
             user = User.objects.get(pk=uid)
 
             # Validate token
-            if not default_token_generator.check_token(user, token.split('-')[1]):
+            if not default_token_generator.check_token(user, token):
                 return Response({"error": "Invalid or expired token."}, status=400)
 
             # Set new password
@@ -480,15 +407,15 @@ class RegisterUserView(APIView):
     def post(self, request):
         serializer = UserRegistrationSerializer(data=request.data)
         if serializer.is_valid():
+            # Create the user instance
             user = serializer.save()
 
-            # Generate and save the OTP secret
-            profile = user.profile  # Assuming the Profile is created via signal or manually
-            profile.otp_secret = pyotp.random_base32()
-            profile.save()
-
+            # Create a token for the newly created user
             token, _ = Token.objects.get_or_create(user=user)
+
+            # Return a success response with the token
             return Response({"message": "User registered successfully", "token": token.key}, status=201)
+        
         return Response(serializer.errors, status=400)
 
 class RenameFileView(APIView):
@@ -551,7 +478,7 @@ class DownloadFileView(APIView):
                 return Response({"error": "File not found."}, status=404)
 
             # Decrypt the file
-            decrypt_file(file_path)
+           # decrypt_file(file_path)
 
             # Stream file response
             response = FileResponse(open(file_path, 'rb'))
@@ -857,28 +784,55 @@ def toggle_star(request, id):
     except File.DoesNotExist:
         return JsonResponse({'error': 'File not found'}, status=404)
 
-class FileView(View):
+#preview file
+class FileView(APIView):
     def get(self, request, file_id):
         try:
-            # Retrieve the file instance from the database
+            # Retrieve the file from the database
             file = File.objects.get(id=file_id)
-            
-            # Check if the 'file_path' attribute is set and has a file
-            if not file.file_path or not file.file_path.name:
-                return HttpResponse("File not found", status=404)
 
-            # Get the file path, based on the file's location in the `uploads` directory
-            file_path = file.file_path.path  # This gets the absolute path of the file
+            # Construct the file path
+            file_path = os.path.join(settings.MEDIA_ROOT, file.file.name)
 
-            # Check if the file exists at the given path
-            if os.path.exists(file_path):
-                # Return the file as an attachment for download
-                response = FileResponse(open(file_path, 'rb'), as_attachment=True)
-                return response
+            # Check if the file exists
+            if not os.path.exists(file_path):
+                return Response({'error': 'File not found'}, status=status.HTTP_404_NOT_FOUND)
+
+            # Prepare the file URL
+            file_url = request.build_absolute_uri(settings.MEDIA_URL + file.file.name)
+
+            # Determine the file type
+            file_extension = os.path.splitext(file.file_name)[1].lower()
+            file_type = None
+            if file_extension in ['.txt']:
+                file_type = 'text'
+            elif file_extension in ['.jpg', '.jpeg', '.png', '.gif']:
+                file_type = 'image'
+            elif file_extension in ['.pdf']:
+                file_type = 'pdf'
             else:
-                return HttpResponse("File not found", status=404)
+                file_type = 'other'
+
+            # For text files, return content
+            if file_type == 'text':
+                with open(file_path, 'r') as f:
+                    content = f.read()
+                return Response({
+                    'name': file.file_name,
+                    'content': content,
+                    'type': file_type,
+                    'url': file_url
+                })
+
+            # For other files, return the URL and type
+            return Response({
+                'name': file.file_name,
+                'type': file_type,
+                'url': file_url
+            })
+
         except File.DoesNotExist:
-            return HttpResponse("File not found", status=404)
+            return Response({'error': 'File not found'}, status=status.HTTP_404_NOT_FOUND)
         
 def serve_file(request, file_id):
     file = File.objects.get(id=file_id)  # Retrieve the file object from the DB
@@ -1094,85 +1048,6 @@ class DeleteAccountView(APIView):
 
         return Response({"message": "Account deleted successfully"}, status=status.HTTP_200_OK)
 
-# sharing files with specific users
-class ShareFileView(View):
-    @method_decorator(csrf_exempt, name='dispatch')
-    def post(self, request, *args, **kwargs):
-
-        try:
-            data = json.loads(request.body)
-            file_id = data.get('fileId')
-            email = data.get('email')
-
-            file = File.objects.get(id=file_id)
-            shared_with_user = User.objects.get(email=email)
-            shared_by_user = request.user
-
-            SharedFile.objects.create(file=file, shared_with=shared_with_user, shared_by=shared_by_user)
-
-            send_mail(
-                'File Shared with You',
-                f'{shared_by_user.username} has shared a file with you. File: {file.name}',
-                'noreply@yourapp.com',
-                [email],
-            )
-
-        
-            return JsonResponse({'message': 'File shared successfully!'}, status=200)
-
-        except File.DoesNotExist:
-            return JsonResponse({'error': 'File not found'}, status=404)
-        except User.DoesNotExist:
-            return JsonResponse({'error': 'User not found'}, status=404)
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-        
-    def get(self, request, *args, **kwargs):
-        return JsonResponse({'error': 'GET method not allowed for this endpoint'}, status=405)
-    
-@csrf_exempt      
-def share_file(request):
-    if request.method == 'POST':
-        data = json.loads(request.body)  # Parse the JSON data
-        file_id = data.get('fileId')  # Correct key to match the frontend payload
-        email = data.get('email')
-
-        try:
-            # Find the file and user
-            file = File.objects.get(id=file_id)
-            shared_with_user = User.objects.get(email=email)
-            shared_by_user = request.user
-
-            # Create a shared file entry
-            SharedFile.objects.create(file=file, shared_with=shared_with_user, shared_by=shared_by_user)
-
-            # Send email notification
-            send_mail(
-                'File Shared with You',
-                f'{shared_by_user.username} has shared a file with you. File: {file.name}',
-                'noreply@yourapp.com',
-                [email],
-            )
-
-            return JsonResponse({'message': 'File shared successfully!'}, status=200)
-        except File.DoesNotExist:
-            return JsonResponse({'error': 'File not found'}, status=404)
-        except User.DoesNotExist:
-            return JsonResponse({'error': 'User not found'}, status=404)
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-
-    return JsonResponse({'error': 'Invalid HTTP method'}, status=405)
-
-def custom_login(request):
-    if request.method == 'POST':
-        username = request.POST['username']
-        password = request.POST['password']
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            request.session['pre_2fa_user_id'] = user.id
-            return redirect('verify_2fa')
-    return render(request, 'login.html')
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -1215,27 +1090,6 @@ def verify_2fa(request):
     except Exception as e:
         logger.error("Error during OTP verification", exc_info=True)
         return JsonResponse({'error': 'Server error'}, status=500)
-
-
-
-#@api_view(['POST'])
-#@permission_classes([IsAuthenticated])
-#def setup_2fa(request):
- #   user = request.user
-  #  device, created = TOTPDevice.objects.get_or_create(user=user, name='default')
-
-   # if created:
-    #    device.save()
-
- #   qr_code_url = device.config_url
-
-    # Generate QR Code
- #   qr = qrcode.make(qr_code_url)
-  #  buffer = BytesIO()
-   # qr.save(buffer, format='PNG')
- #   base64_image = b64encode(buffer.getvalue()).decode()
-
-  #  return JsonResponse({"qr_code": f"data:image/png;base64,{base64_image}"})
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -1293,7 +1147,6 @@ def create_or_update_user_profile(sender, instance, created, **kwargs):
         Profile.objects.create(user=instance)
     instance.profile.save()
 
-
 #testing email
 def send_test_email(request):
     """Django view to send a test email."""
@@ -1308,3 +1161,87 @@ def send_test_email(request):
         return JsonResponse({'status': 'success', 'message': result})
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)})
+
+
+   
+class ShareFileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, file_id):
+        logger.info("Received request to share file")
+        logger.info(f"Request data: {request.data}")
+
+        # Retrieve email from request
+        email = request.data.get('email')
+        if not email:
+            logger.error("Email is missing in the request data")
+            return Response({"error": "Email is required."}, status=400)
+
+        # Validate the email
+        try:
+            validate_email(email)
+        except ValidationError:
+            logger.error("Invalid email address provided")
+            return Response({"error": "Invalid email address."}, status=400)
+
+        # Check if file exists and belongs to the current user
+        file_instance = get_object_or_404(File, id=file_id, user_id=request.user.id)
+        logger.info(f"File instance retrieved: {file_instance}")
+
+        # Create a shared file entry
+        try:
+            shared_file = SharedFile.objects.create(
+                file=file_instance,
+                shared_with=email,
+                shared_by=request.user
+            )
+            # Create a notification for the user the file is shared with
+            create_notification(file_instance.user, f"{request.user.username} has shared a file with you: {file_instance.file_name}")
+
+        except Exception as e:
+            logger.error(f"Error creating SharedFile entry: {e}")
+            return Response({"error": "Failed to share the file."}, status=500)
+
+        # Send email notification via Gmail API
+        try:
+            subject = "File Shared with You"
+            body = f"{request.user.username} has shared a file with you: {file_instance.file_name}"
+            send_email_via_gmail(email, subject, body)  # Use the Gmail API to send the email
+        except Exception as e:
+            logger.error(f"Error sending email: {e}")
+            return Response({"error": "Failed to send email notification."}, status=500)
+
+        # Return success response with a link to the shared file
+        return Response({
+            "message": "File shared successfully!",
+            "share_link": f"http://127.0.0.1:8000/api/shared-files/{shared_file.id}/"
+        }, status=200)
+    
+class NotificationListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')
+        notifications_data = [
+            {
+                'id': notification.id,
+                'message': notification.message,
+                'is_read': notification.is_read,
+                'created_at': notification.created_at
+            }
+            for notification in notifications
+        ]
+        return Response({"notifications": notifications_data})
+
+#this for mark as read once they seem them 
+class MarkNotificationReadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, notification_id):
+        try:
+            notification = Notification.objects.get(id=notification_id, user=request.user)
+            notification.is_read = True
+            notification.save()
+            return Response({"message": "Notification marked as read."}, status=200)
+        except Notification.DoesNotExist:
+            return Response({"error": "Notification not found."}, status=404)

@@ -1,5 +1,6 @@
 import { Component, Inject } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { FileService } from '/Users/intan/testproject/frontend/src/app/services/file.service';
 
 @Component({
   selector: 'app-share-dialog',
@@ -10,17 +11,18 @@ export class ShareDialogComponent {
   email: string = '';
 
   constructor(
+    private fileService: FileService,
     public dialogRef: MatDialogRef<ShareDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: { fileId: number }
   ) {}
 
   onCancel(): void {
-    this.dialogRef.close(); // Close the dialog without taking action
+    this.dialogRef.close();
   }
 
   onShare(): void {
     if (this.email) {
-      this.dialogRef.close(this.email); // Return the email to the parent component
+      this.dialogRef.close(this.email); // Pass email to parent component
     }
   }
 }

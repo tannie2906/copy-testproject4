@@ -39,7 +39,7 @@
         <tbody>
           <tr *ngFor="let file of searchResults">
             <td>
-              <a href="#" (click)="onOpenFile(file, $event)">
+              <a (click)="onOpenFile(file)">
                 {{ file.file_name }}
               </a>
             </td>
@@ -47,7 +47,6 @@
             <td>Owner: {{ file.owner?.username }}</td>
             <td>{{ file.created_at | date: 'medium' }}</td>
             <td class="actions">
-              <!-- Actions Dropdown -->
               <div class="dropdown">
                 <button class="more-button" (click)="toggleDropdown(file)">⋮</button>
                 <div
@@ -56,10 +55,9 @@
                   *ngIf="file.showDropdown"
                 >
                   <a href="#" (click)="onRename(file)">Rename</a>
-                  <a href="#" (click)="onMove(file)">Move</a>
-                  <a href="#" (click)="onShare(file)">Share</a>
+                  <button (click)="onShare(file)">Share</button>
                   <a href="#" (click)="onDownload(file, $event)">Download</a>
-                  <a href="#" (click)="onDelete(file, $event)">Delete</a>
+                  <a href="#" (click)="onDelete(file, $event)">Delete</a>   <!-- No results -->
                 </div>
               </div>
             </td>

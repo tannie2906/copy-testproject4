@@ -16,6 +16,7 @@ import { FilePreviewComponent } from './file-preview/file-preview.component';
 import { Setup2faComponent } from '/Users/intan/testproject/frontend/src/app/setup2fa/setup2fa.component';
 import { ForgotPasswordComponent } from './forgot-password/forgot-password.component';
 import { ResetPasswordComponent } from './reset-password/reset-password.component';
+import { FileViewComponent } from './file-view/file-view.component';
 
 const routes: Routes = [
   { path: '', redirectTo: '/home', pathMatch: 'full' }, // Redirect to home page
@@ -33,7 +34,8 @@ const routes: Routes = [
   { path: '', component: FolderComponent }, 
   { path: 'setup-2fa', component: Setup2faComponent },
   { path: 'forgot-password', component: ForgotPasswordComponent },
-  { path: 'reset-password/:token', component: ResetPasswordComponent },
+  { path: 'reset-password/:uid/:token', component: ResetPasswordComponent },
+  { path: 'files/view/:file_id', component: FileViewComponent }
 ];
 
 @NgModule({

@@ -32,7 +32,7 @@ def get_credentials():
 
     return creds
 
-def send_reset_email(to_email, token):
+def send_reset_email(to_email, uid, token):
     """Send password reset email via Gmail API."""
     creds = get_credentials()
     if not creds:
@@ -44,7 +44,7 @@ def send_reset_email(to_email, token):
         service = build('gmail', 'v1', credentials=creds)
 
         # Correctly create the reset URL using the reset token
-        reset_url = f'http://localhost:4200/reset-password/{token}/'
+        reset_url = f'http://localhost:4200/reset-password/{uid}/{token}/'
 
         # Create email content
         subject = "Password Reset Request"
@@ -78,3 +78,22 @@ def send_message(service, sender, message):
     except Exception as error:
         print(f"An error occurred: {error}")
         return None
+    
+
+def send_email_via_gmail(to_email, subject, body):
+    creds = get_credentials()  # Ensure this uses the function from earlier to get Gmail API credentials
+    if not creds:
+        raise Exception("Failed to get Gmail credentials")
+    
+    try:
+        # Build the Gmail service using credentials
+        service = build('gmail', 'v1', credentials=creds)
+
+        # Create the email message
+        message = create_message("your-email@gmail.com", to_email, subject, body)
+        
+        # Send the email via Gmail API
+        send_message(service, "me", message)
+    except Exception as error:
+        print(f"An error occurred while sending email: {error}")
+        raise

@@ -18,8 +18,9 @@ def get_credentials():
     # If there are no valid credentials, prompt user to log in
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+            creds.refresh(Request())  # Refresh the token if expired
         else:
+            # Start the OAuth2 flow for a new token
             flow = InstalledAppFlow.from_client_secrets_file(
                 'client_secret_438132391113-cllb7723buo3mbk5ok53sk36n3v9tecc.apps.googleusercontent.com.json', SCOPES)
             creds = flow.run_local_server(port=8080)

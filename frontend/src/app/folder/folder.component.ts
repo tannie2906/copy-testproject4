@@ -296,12 +296,27 @@ export class FolderComponent implements OnInit {
     this.fileService.getStarredFiles().subscribe({
       next: (data) => {
         console.log('Fetched Starred Files:', data);
-        this.starredFiles = data;
+        this.starredFiles = data.map((file: any) => ({
+          id: file.id,
+          name: file.file_name,
+          size: this.formatFileSize(file.size),
+          owner: file.user_id?.username || 'Unknown',
+          modified: file.created_at,
+          isStarred: file.is_starred,
+          type: 'file',
+        }));
       },
       error: (error) => {
         console.error('Error fetching starred files:', error);
-      }
+      },
     });
+  }
+  
+  toggleStarredView(): void {
+    this.showStarredFiles = !this.showStarredFiles;
+    if (this.showStarredFiles) {
+      this.fetchStarredFiles();
+    }
   }
   
   toggleStar(file: any): void {
@@ -322,13 +337,6 @@ export class FolderComponent implements OnInit {
         this.fetchStarredFiles(); // Refetch as a fallback
       }
     });
-  }
-  
-  toggleStarredView(): void {
-    this.showStarredFiles = !this.showStarredFiles;
-    if (this.showStarredFiles) {
-      this.getStarredFiles(); // Updated to use getStarredFiles
-    }
   }
   
   loadFiles(): void {
@@ -473,18 +481,22 @@ export class FolderComponent implements OnInit {
 
   shareFile(fileId: number): void {
     const dialogRef = this.dialog.open(ShareDialogComponent, {
-        width: '400px',
-        data: { fileId },
+      width: '400px',
+      data: { fileId },
     });
 
     dialogRef.afterClosed().subscribe((email) => {
-        if (email) {
-            this.fileService.shareFile(fileId, email).subscribe(
-                () => alert('File shared successfully!'),
-                (error) => alert('Error sharing file: ' + error.message)
-            );
-        }
+      if (email) {
+        this.fileService.shareFile(fileId, email).subscribe(
+          () => alert('File shared successfully!'),
+          (error) => alert('Error sharing file: ' + error.message)
+        );
+      }
     });
+  }
+  
+  onOpenFile(file: any): void {
+    this.router.navigate([`/files/view/${file.id}`]);
   }
 }
 

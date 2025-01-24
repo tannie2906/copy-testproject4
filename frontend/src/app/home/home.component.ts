@@ -44,13 +44,6 @@ export class HomeComponent implements OnInit {
     }
   }
 
-  onCreateFolder() {
-    console.log("Folder creation triggered")
-  }
-
-  onCreateDocument(): void {
-    console.log('Document creation triggered');
-  }
 
   onFileUpload(event: any): void {
     const file = event.target.files[0];

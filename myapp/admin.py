@@ -16,5 +16,5 @@ from .models import File, Folder
 
 @admin.register(File)
 class FileAdmin(admin.ModelAdmin):
-    list_display = ('file_name', 'size', 'file_path', 'folder', 'user_id')  # Use user_id
+    list_display = ('file_name', 'size', 'file_path', 'user_id')  # Use user_id
     search_fields = ('file_name', 'file_path')

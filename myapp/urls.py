@@ -10,10 +10,10 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (
     FileUploadView, FileListView, CustomAuthToken, ProfileView, RegisterUserView,
     UploadProfilePictureView, DeletedFilesView, #Setup2FA, #setup_2fa,# verify_2fa,
-    RenameFileView, DeleteFileView, RestoreFileView, DownloadFileView,
-    ShareFileView, FilePreviewView, FileMetadataView, ChangePasswordView,
+    RenameFileView, DeleteFileView, RestoreFileView, DownloadFileView,NotificationListView, MarkNotificationReadView,
+    FilePreviewView, FileMetadataView, ChangePasswordView,
     DeleteAccountView, FolderView, FolderListView, FolderViewSet, FileSearchView,
-    EmptyTrashView, FolderContentView, #Verify2FA, QRGeneratorView,
+    EmptyTrashView, FolderContentView, ShareFileView #Verify2FA, QRGeneratorView,
 )
 from two_factor.views import SetupView 
 from .views import CustomAuthToken
@@ -41,7 +41,9 @@ urlpatterns = [
     path('setup-2fa/', views.setup_2fa, name='setup_2fa'),
 
     path('password-reset-request', password_reset_request, name='password_reset_request'),
-    path('password-reset-confirm/<str:token>', password_reset_confirm, name='password_reset_confirm'),
+    path('password-reset-confirm/<str:uidb64>/<str:token>',
+    password_reset_confirm,
+    name='password_reset_confirm'),
 
     # Admin (exclude from 2FA)
     path('admin/', django_admin.site.urls), # Correct way to include the admin site
@@ -57,8 +59,7 @@ urlpatterns = [
 
     path('files/', FileListView.as_view(), name='file-list'),
    
-    path('files/share/', views.share_file, name='share_file'),
-   # path('files/shared/<str:share_link>/', views.shared_file_detail, name='shared_file_detail'),
+
 
     #folder page
     path('files/view/<int:file_id>/', FileView.as_view(), name='file-view'),
@@ -85,7 +86,6 @@ urlpatterns = [
     path('delete/<int:file_id>/', DeleteFileView.as_view(), name='delete-file'),
     path('restore-files/', RestoreFileView.as_view(), name='restore-files'),
     path('download/<int:file_id>/', DownloadFileView.as_view(), name='download-file'),
-    path('share/<int:file_id>/', ShareFileView.as_view(), name='share-file'),
 
     #file review
     path('file-preview/<int:file_id>/', FilePreviewView.as_view(), name='file_preview'),
@@ -100,15 +100,15 @@ urlpatterns = [
     #path('folders/create/', views.FolderView.as_view(), name='folder-create'),  # POST
     path('folders/<int:folder_id>/', views.FolderContentView.as_view(), name='folder_list'),
 
-
-    #new one
-    #path('folders/', FolderView.as_view(), name='create-folder'),
-
-   # path('upload-folder/', views.upload_folder, name='upload_folder'),
-
    # path('upload/', UploadView.as_view(), name='upload'),
     path('folder/<int:folder_id>/', FolderContentView.as_view(), name='folder-contents'),
-    path('share/<int:file_id>/', ShareFileView.as_view(), name='share-file'),
-    path('api/share-file/', ShareFileView.as_view(), name='share-file'),
+
+    path('share-file/<int:file_id>/', ShareFileView.as_view(), name='share_file'),
+    path('notifications/', NotificationListView.as_view(), name='notifications'),
+    path('notifications/mark-read/<int:notification_id>/', MarkNotificationReadView.as_view(), name='mark_notification_read'),
+    path('file/<int:file_id>/', FileView.as_view(), name='get_file'),
+    path('folders/', views.FolderListView.as_view(), name='folder-list'),
+    path('api/files/view/<int:file_id>/', FileView.as_view(), name='file-view'),
+    
 
 ]

@@ -22,6 +22,9 @@ export interface File {
   file_path: string;
   modified: string;
   isStarred?: boolean; 
+  name: string;
+  content?: string;  // content is optional, since it's only available for .txt files
+  url: string;
 
 }
 
@@ -71,11 +74,11 @@ export class FileService {
 
   // Rename file
   renameFile(fileId: number, newName: string) {
-    const url = `http://127.0.0.1:8000/api/rename/`;  // This is your backend URL
-    const body = { file_id: fileId, new_name: newName };
-  
-    return this.http.post(url, body);
+    const token = this.authService.getToken();
+    const headers = new HttpHeaders({ Authorization: `Token ${token}` });
+    return this.http.post(`${this.apiUrl}/rename/${fileId}/`, { name: newName }, { headers });
   }
+  
 
   getStarredFiles() {
     return this.http.get<any[]>('http://127.0.0.1:8000/api/files/starred/', {
@@ -98,7 +101,6 @@ export class FileService {
     return this.http.get<{ fileUrl: string }>(`${this.apiUrl}/files/${fileName}`, this.getHeaders());
   }  
 
-
   // delete method 
   deleteFile(fileId: number, isDeleted: boolean = false): Observable<any> {
     const endpoint = isDeleted ? 'delete/permanent' : 'delete'; // Endpoint fix
@@ -119,7 +121,7 @@ export class FileService {
 
   // File download URL
   getFileDownloadUrl(fileId: number): string {
-    return `${this.apiUrl}/files/download/${fileId}/`;
+    return `${this.apiUrl}/download/${fileId}/`;
   }
   
   // Ensure download uses the correct filename
@@ -166,15 +168,16 @@ createFolder(folderData: any): Observable<any> {
 } 
 
   //share file
-  shareFile(fileId: number, email: string) {
+  shareFile(fileId: number, email: string): Observable<any> {
     const csrfToken = this.getCsrfToken();
     const headers = new HttpHeaders({
       'Content-Type': 'application/json',
       'X-CSRFToken': csrfToken,
     });
-  
-    const payload = { fileId, email };
-    const url = `${this.apiUrl}/share-file/`;
+
+    const url = `${this.apiUrl}/share-file/${fileId}/`; // Updated endpoint
+    const payload = { email };
+
     return this.http.post(url, payload, { headers }).pipe(
       catchError((error) => {
         console.error('Error sharing file:', error.message);
@@ -182,7 +185,6 @@ createFolder(folderData: any): Observable<any> {
       })
     );
   }
-  
 
   private getCsrfToken(): string {
     const name = 'csrftoken';
@@ -195,5 +197,8 @@ createFolder(folderData: any): Observable<any> {
     }
     return '';
   }
-  
+
+  getFileById(fileId: string): Observable<any> {
+    return this.http.get(`http://localhost:8000/api/files/view/${fileId}/`); // Add /api/ prefix
+}
 }

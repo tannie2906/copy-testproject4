@@ -30,7 +30,8 @@ import { MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { Setup2faComponent } from './setup2fa/setup2fa.component';
 import { ForgotPasswordComponent } from './forgot-password/forgot-password.component';
-import { ResetPasswordComponent } from './reset-password/reset-password.component'; //for dialog box
+import { ResetPasswordComponent } from './reset-password/reset-password.component';
+import { FileViewComponent } from './file-view/file-view.component'; //for dialog box
 //import { QRCodeModule } from 'angularx-qrcode'
 //import { QrCodeComponent } from './qr-code/qr-code.component';  
 
@@ -55,6 +56,7 @@ import { ResetPasswordComponent } from './reset-password/reset-password.componen
     Setup2faComponent,
     ForgotPasswordComponent,
     ResetPasswordComponent,
+    FileViewComponent,
     //QrCodeComponent,
     
 

@@ -1,6 +1,14 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ApiService } from '../services/api.service';
+import { FileService, File } from '../services/file.service';
+import { HttpErrorResponse } from '@angular/common/http';
+import { UserFile } from '../models/user-file.model';
+import { AuthService } from '../auth.service';
+import axios from 'axios';
+import { ShareDialogComponent } from '../share-dialog/share-dialog.component';
+import { MatDialog } from '@angular/material/dialog';
+import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-search',
@@ -13,11 +21,21 @@ export class SearchComponent implements OnInit {
   totalPages: number = 0;
   currentPage: number = 1;
   sortOrder: { [key: string]: string } = { name: 'asc' };
+  files: any[] = [];
+  searchService: any;
+  searchQuery: any;
+  currentFolderId: string | null = null;
+  shareEmail = '';
+  sharePermissions: string | undefined = '';  
 
   constructor(
+    private authService: AuthService,
     private apiService: ApiService,
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router, 
+    private fileService: FileService,
+    private http: HttpClient,
+    private dialog: MatDialog,
   ) {}
 
   ngOnInit(): void {
@@ -82,10 +100,11 @@ export class SearchComponent implements OnInit {
   }
 
   // Open file action
-  onOpenFile(file: any, event: Event): void {
-    event.preventDefault();
-    console.log('Open file:', file);
+  onOpenFile(file: any): void {
+    this.router.navigate([`/files/view/${file.id}`]);
   }
+
+  
 
   // Toggle starred files
   toggleStar(file: any): void {
@@ -109,24 +128,130 @@ export class SearchComponent implements OnInit {
   }
 
   onRename(file: any): void {
-    console.log('Rename file:', file);
+    const newName = prompt('Enter a new name for the file:', file.name);
+  
+    if (!newName || newName.trim() === '') {
+      alert('File name cannot be empty.');
+      return;
+    }
+  
+    this.fileService.renameFile(file.id, newName).subscribe({
+      next: () => {
+        file.name = newName; // Update the name in the UI
+        alert('File renamed successfully!');
+      },
+      error: (error: HttpErrorResponse) => {
+        console.error('Error renaming file:', error);
+        alert(error.error?.error || 'Failed to rename the file.');
+      },
+    });
   }
+  
 
-  onMove(file: any): void {
-    console.log('Move file:', file);
+  refreshSearchResults() {
+    // Assume the search query is available in the component
+    const searchQuery = this.searchQuery; // Get the current search query
+    const page = this.currentPage; // Get the current page number
+  
+    // Re-fetch the search results
+    this.searchService.search(searchQuery, page).subscribe({
+      next: (response: { results: any[]; }) => {
+        this.searchResults = response.results; // Update the UI with the latest search results
+      },
+      error: (error: any) => {
+        console.error('Error fetching search results:', error);
+      },
+    });
   }
+  
 
   onShare(file: any): void {
-    console.log('Share file:', file);
+    console.log('File passed to onShare:', file); // Debugging
+    if (!file.id) {
+      alert('File ID is missing.');
+      return;
+    }
+  
+    const dialogRef = this.dialog.open(ShareDialogComponent, {
+      width: '400px',
+      data: { fileId: file.id },
+    });
+  
+    dialogRef.afterClosed().subscribe((email) => {
+      if (email) {
+        this.fileService.shareFile(file.id, email).subscribe({
+          next: () => {
+            alert(`File shared successfully with ${email}`);
+          },
+          error: (error) => {
+            console.error('Error sharing file:', error);
+            alert('Failed to share the file.');
+          },
+        });
+      }
+    });
   }
 
   onDownload(file: any, event: Event): void {
-    event.stopPropagation();
-    console.log('Download file:', file);
+    event.preventDefault();
+  
+    const token = this.authService.getToken();
+    if (!token) {
+      alert('You are not authenticated. Please log in.');
+      return;
+    }
+  
+    // Ensure file.id is correctly passed
+    if (!file.id) {
+      console.error('File ID is missing in the search results:', file);
+      alert('Unable to download the file. File ID is missing.');
+      return;
+    }
+  
+    this.fileService.downloadFile(file.id, token).subscribe({
+      next: (blob) => {
+        // Create a URL for the downloaded file
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+  
+        // Use the file_name if provided
+        a.download = file.file_name || `file-${file.id}`;
+        a.click();
+  
+        // Clean up the URL object
+        window.URL.revokeObjectURL(downloadUrl);
+      },
+      error: (error) => {
+        console.error('Error downloading file:', error);
+  
+        // Debugging
+        console.error('File object causing error:', file);
+  
+        alert('Failed to download the file. Please try again.');
+      },
+    });
+  }
+  
+
+  onDelete(file: any, event?: Event): void {
+    if (event) {
+      event.preventDefault();
+    }
+  
+    if (confirm('Are you sure you want to delete this file?')) {
+      this.fileService.deleteFile(file.id).subscribe({
+        next: () => {
+          alert('File deleted successfully.');
+          // Remove file from UI
+          this.searchResults = this.searchResults.filter((f) => f.id !== file.id);
+        },
+        error: (error) => {
+          console.error('Error deleting file:', error);
+          alert('Failed to delete the file.');
+        },
+      });
+    }
   }
 
-  onDelete(file: any, event: Event): void {
-    event.stopPropagation();
-    console.log('Delete file:', file);
-  }
 }

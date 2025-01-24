@@ -4,6 +4,7 @@ import { AuthService } from './auth.service';
 import { ApiService } from './services/api.service';
 import { HttpClient } from '@angular/common/http';
 import { UserFile } from './models/user-file.model';
+import { NotificationService } from './services/notification.service'; 
 
 export interface File {
   id: number;
@@ -19,6 +20,9 @@ export interface File {
   deleted_at?: string;
   file_path: string;
   isStarred?: boolean; 
+  name: string;
+  content?: string;  // content is optional, since it's only available for .txt files
+  url: string;
 }
 
 @Component({
@@ -36,30 +40,15 @@ export class AppComponent implements OnInit {
   query: string = '';
   totalPages: number = 0;
   currentPage: number = 1;
+  notifications: string[] = [];
 
   constructor(
     private authService: AuthService,
     private router: Router,
     private apiService: ApiService,
-    private http: HttpClient
+    private http: HttpClient,
+    private notificationService: NotificationService
   ) {}
-
-
-  goToLogin() {
-    this.router.navigate(['/login']);  // Navigate to the login page
-  }
-
-  onLogin(): void {
-    // Navigate to login page or trigger login functionality
-    this.router.navigate(['/login']);
-  }
-
-  onLogout(): void {
-    // Clear authentication token and update authentication status
-    localStorage.removeItem('auth_token');
-    this.isAuthenticated = false;  // Immediately update isAuthenticated to false
-    this.router.navigate(['/home']);
-  }
 
   ngOnInit(): void {
     // Always check the authentication status when the component is initialized
@@ -79,6 +68,28 @@ export class AppComponent implements OnInit {
         });
       }
     }
+    // Subscribe to notifications
+    this.notificationService.notifications$.subscribe((notifications) => {
+      this.notifications = notifications;
+    });
+  }
+  
+
+
+  goToLogin() {
+    this.router.navigate(['/login']);  // Navigate to the login page
+  }
+
+  onLogin(): void {
+    // Navigate to login page or trigger login functionality
+    this.router.navigate(['/login']);
+  }
+
+  onLogout(): void {
+    // Clear authentication token and update authentication status
+    localStorage.removeItem('auth_token');
+    this.isAuthenticated = false;  // Immediately update isAuthenticated to false
+    this.router.navigate(['/home']);
   }
 
   checkAuthenticationStatus(): void {
@@ -107,4 +118,9 @@ export class AppComponent implements OnInit {
       this.router.navigate(['/search'], { queryParams: { q: this.query, page: 1 } });
     }
   }  
+  
+  // Optionally, you can trigger a notification for testing
+  testNotification() {
+    this.notificationService.addNotification("A file has been shared with you!");
+  }
 }  

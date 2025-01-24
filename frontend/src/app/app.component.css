@@ -208,3 +208,17 @@ router-outlet {
 .dropdown-menu button:hover {
   background-color: #f4f4f4;
 }
+
+/* app.component.css */
+.notification {
+  background-color: #f4f4f4;
+  padding: 10px;
+  margin: 5px;
+  border-radius: 5px;
+  border: 1px solid #ddd;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+}
+
+.notification:last-child {
+  margin-bottom: 20px;
+}
