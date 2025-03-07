@@ -1,0 +1,93 @@
+.lockbox-container {
+  max-width: 80%;  /* Use percentage for responsiveness */
+  margin: 40px auto;
+  text-align: center;
+  background: #ffffff;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Make sure the content inside doesn't get too stretched */
+.lockbox-container h2 {
+  font-size: 28px;
+  margin-bottom: 15px;
+}
+
+/* Lockbox Image */
+.lockbox-image img {
+  width: 150px;
+  height: auto;
+  margin-bottom: 15px;
+}
+
+/* Password Input & Button */
+.password-container {
+  margin-top: 10px;
+}
+
+.password-container input {
+  width: 80%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 16px;
+  text-align: center;
+}
+
+.password-container button {
+  background-color: #003366;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  font-size: 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.password-container button:hover {
+  background-color: #f8761f;
+}
+
+/* Table Design */
+.file-list {
+  margin-top: 20px;
+}
+
+.file-list h3 {
+  color: #003366;
+  margin-bottom: 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+th, td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+th {
+  background-color: #003366;
+  color: white;
+}
+
+/* Move Button */
+.move-btn {
+  background-color: #f8761f;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  font-size: 14px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.move-btn:hover {
+  background-color: #cc5d17;
+}

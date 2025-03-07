@@ -25,6 +25,7 @@ export interface File {
   name: string;
   content?: string;  // content is optional, since it's only available for .txt files
   url: string;
+  tables: any;
 
 }
 
@@ -33,7 +34,7 @@ export interface File {
 })
 
 export class FileService {
-  private apiUrl = 'http://127.0.0.1:8000/api'; // Base URL for the API
+  private apiUrl = 'https://127.0.0.1:8000/api'; // Base URL for the API
   folderFiles: File[] = [];
   
   constructor(private http: HttpClient, private authService: AuthService) {}
@@ -73,22 +74,22 @@ export class FileService {
   }
 
   // Rename file
-  renameFile(fileId: number, newName: string) {
+  renameFile(fileId: number, newFullName: string) {
     const token = this.authService.getToken();
     const headers = new HttpHeaders({ Authorization: `Token ${token}` });
-    return this.http.post(`${this.apiUrl}/rename/${fileId}/`, { name: newName }, { headers });
-  }
   
+    return this.http.post(`${this.apiUrl}/rename/${fileId}/`, { name: newFullName }, { headers });
+  }
 
   getStarredFiles() {
-    return this.http.get<any[]>('http://127.0.0.1:8000/api/files/starred/', {
+    return this.http.get<any[]>('https://127.0.0.1:8000/api/files/starred/', {
       headers: { Authorization: `Bearer ${this.authService.getToken()}` },
     });
   }
   
   toggleStar(fileId: number, isStarred: boolean) {
     return this.http.post(
-      `http://127.0.0.1:8000/api/files/toggle-star/${fileId}/`,
+      `https://127.0.0.1:8000/api/files/toggle-star/${fileId}/`,
       { isStarred },
       {
         headers: { Authorization: `Bearer ${this.authService.getToken()}` },
@@ -125,17 +126,26 @@ export class FileService {
   }
   
   // Ensure download uses the correct filename
-  downloadFile(fileId: number, token: string) {
-    const url = this.getFileDownloadUrl(fileId);
+  downloadFile(fileId: number, token: string): Observable<Blob> {
     const headers = new HttpHeaders({
-      Authorization: `Bearer ${token}`,
+      Authorization: `Token ${token}`,
     });
-  
-    return this.http.get(url, {
-      headers: headers,
-      responseType: 'blob',
+
+    return this.http.get(`${this.apiUrl}/download/${fileId}/`, {
+      headers,
+      responseType: 'blob', // Ensure we receive binary data
     });
   }
+
+  saveBlobToFile(blob: Blob, fileName: string): void {
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = fileName || `file-${new Date().getTime()}`;
+    a.click();
+    window.URL.revokeObjectURL(downloadUrl);
+  }
+
 
   // Example method to search files
   searchFiles(searchTerm: string, page: number) {
@@ -162,29 +172,36 @@ export class FileService {
     });
   }
 
-  // Create Folder
-createFolder(folderData: any): Observable<any> {
-  return this.http.post(`${this.apiUrl}/folders/`, folderData, this.getHeaders());
-} 
-
-  //share file
-  shareFile(fileId: number, email: string): Observable<any> {
+  // Updated shareFile method
+  shareFile(fileId: number, data: { email: string; password?: string | null; allow_download?: boolean }): Observable<any> {
     const csrfToken = this.getCsrfToken();
     const headers = new HttpHeaders({
       'Content-Type': 'application/json',
       'X-CSRFToken': csrfToken,
     });
 
-    const url = `${this.apiUrl}/share-file/${fileId}/`; // Updated endpoint
-    const payload = { email };
+    const url = `${this.apiUrl}/share-file/${fileId}/`;
 
-    return this.http.post(url, payload, { headers }).pipe(
+    return this.http.post(url, data, { headers }).pipe(
       catchError((error) => {
         console.error('Error sharing file:', error.message);
         return throwError(() => error);
       })
     );
   }
+
+  // Get shared file with permission check
+  getSharedFile(shareToken: string, password: string = ''): Observable<any> {
+    return this.http.get(`${this.apiUrl}/shared-files/${shareToken}/`, {
+      params: { password }
+    }).pipe(
+      catchError((error) => {
+        console.error('Error retrieving shared file:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+  
 
   private getCsrfToken(): string {
     const name = 'csrftoken';
@@ -199,6 +216,7 @@ createFolder(folderData: any): Observable<any> {
   }
 
   getFileById(fileId: string): Observable<any> {
-    return this.http.get(`http://localhost:8000/api/files/view/${fileId}/`); // Add /api/ prefix
-}
+    return this.http.get(`https://localhost:8000/api/files/view/${fileId}/`); // Add /api/ prefix
+  }
+
 }

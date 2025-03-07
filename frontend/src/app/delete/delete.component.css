@@ -1,32 +1,44 @@
 /* General Styling */
 .bin-page {
+  width: 100%;
+  max-width: 100%;
   padding: 20px;
-  font-family: 'Arial', sans-serif;
   background-color: #f9f9f9;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .page-title {
-  font-size: 24px;
+  font-size: 26px;
   font-weight: bold;
+  color: #333;
+  text-align: center;
   margin-bottom: 20px;
 }
 
+/* Action Buttons */
 .actions {
   display: flex;
-  justify-content: flex-start;
+  justify-content: center;
   gap: 15px;
   margin-bottom: 20px;
 }
 
 .actions button {
-  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 14px;
+  padding: 10px 16px;
   border-radius: 5px;
-  cursor: pointer;
+  transition: 0.3s ease-in-out;
 }
 
+.actions button i {
+  font-size: 16px;
+}
+
+/* Table Container */
 .table-container {
   overflow-x: auto;
 }
@@ -34,76 +46,105 @@
 .file-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 20px;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
-.file-table th,
+.file-table th, 
 .file-table td {
-  padding: 12px 15px;
+  padding: 14px 18px;
   text-align: left;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid #ddd;
 }
 
 .file-table th {
-  background-color: #f1f1f1;
-  color: #555;
+  background: #f4f4f4;
   font-weight: bold;
+  color: #333;
 }
 
+/* Hover Effect */
 .file-table tbody tr:hover {
-  background-color: #f9f9f9;
+  background: #f9f9f9;
 }
 
 /* Action Buttons */
+.action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
 .action-buttons button {
-  margin-right: 5px;
+  padding: 8px 12px;
+  border-radius: 50%;
+  transition: 0.2s ease-in-out;
 }
 
+.action-buttons button:hover {
+  transform: scale(1.1);
+}
+
+/* Buttons */
 .btn {
-  font-size: 14px;
-  padding: 8px 16px;
   border: none;
-  border-radius: 5px;
   cursor: pointer;
-  transition: background-color 0.3s, transform 0.3s;
-}
-
-.btn:hover {
-  transform: translateY(-2px);
+  transition: all 0.3s ease-in-out;
 }
 
 .btn-primary {
-  background-color: #007bff;
+  background: #27ae60;
   color: white;
 }
 
 .btn-primary:hover {
-  background-color: #0056b3;
+  background: #0056b3;
 }
 
 .btn-danger {
-  background-color: #f44336;
+  background: #e74c3c;
   color: white;
 }
 
 .btn-danger:hover {
-  background-color: #e53935;
+  background: #c0392b;
 }
 
 .btn-success {
-  background-color: #4caf50;
+  background: #27ae60;
   color: white;
 }
 
 .btn-success:hover {
-  background-color: #388e3c;
+  background: #219150;
 }
 
 .btn-warning {
-  background-color: #ff9800;
+  background: #f39c12;
   color: white;
 }
 
 .btn-warning:hover {
-  background-color: #fb8c00;
+  background: #e67e22;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .actions {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .file-table th, 
+  .file-table td {
+    padding: 10px;
+  }
+
+  .action-buttons {
+    gap: 5px;
+  }
+
+  .action-buttons button {
+    padding: 6px;
+  }
 }

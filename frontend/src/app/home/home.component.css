@@ -113,6 +113,36 @@ body {
   display: block;
 }
 
+/* Feature Card Styling */
+/* Feature Section - Arrange in One Row */
+.feature-container {
+  display: flex;
+  justify-content: center;  /* Center items horizontally */
+  align-items: stretch; /* Make all cards the same height */
+  gap: 20px; /* Space between cards */
+  padding: 20px;
+}
+
+/* Feature Card Styling */
+.feature-card {
+  background-color: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  width: 300px; /* Set a fixed width */
+  flex: 0 1 auto; /* Ensures they stay in a row */
+}
+
+/* Adjust Image Size */
+.feature-icon {
+  width: 80px;
+  height: auto;
+  margin-bottom: 15px;
+}
+
+
+
 /* Footer */
 .footer {
   background-color: #f1f5f9;

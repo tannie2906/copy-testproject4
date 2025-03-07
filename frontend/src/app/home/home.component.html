@@ -18,7 +18,7 @@
     </p>
     
 
-    <button class="cta-button" (click)="onGetStartedClick()">Upload</button>
+    <button class="cta-button" (click)="onGetStartedClick()">⬆ Upload</button>
   </section>
 
   <!-- Hidden File Input -->
@@ -32,34 +32,33 @@
   </main>
 <!-- Button to Trigger File Input -->
      <!--Other content (feature cards) will remain as is or be removed -->
-   <!--
+   
   <section class="features" *ngIf="userFiles.length === 0">
-    <p class="no-files-message">You have no files uploaded yet. Start uploading to see them here!</p>
-    <div class="feature-card">
-      <img src="assets/secure-icon.png" alt="Secure" class="feature-icon" />
-      <h2 class="feature-title">Top-Level Security</h2>
-      <p class="feature-description">
-        Your files are protected with advanced encryption, ensuring confidentiality.
-      </p>
+
+    <div class="feature-container">
+      <div class="feature-card">
+        <img src="assets/3076178.png" alt="Secure" class="feature-icon" />
+        <h2 class="feature-title">Top-Level Security</h2>
+        <p class="feature-description">
+          Your files are protected with advanced encryption, ensuring confidentiality.
+        </p>
+      </div>
+    
+      <div class="feature-card">
+        <img src="assets/1037325.png" alt="Sharing" class="feature-icon" />
+        <h2 class="feature-title">Effortless Sharing</h2>
+        <p class="feature-description">
+          Share your documents securely and seamlessly with colleagues or friends.
+        </p>
+      </div>
     </div>
-    <div class="feature-card">
-      <img src="assets/easy-access-icon.png" alt="Easy Access" class="feature-icon" />
-      <h2 class="feature-title">Easy Access</h2>
-      <p class="feature-description">
-        Access your files from anywhere, anytime, across all your devices.
-      </p>
-    </div>
-    <div class="feature-card">
-      <img src="assets/sharing-icon.png" alt="Sharing" class="feature-icon" />
-      <h2 class="feature-title">Effortless Sharing</h2>
-      <p class="feature-description">
-        Share your documents securely and seamlessly with colleagues or friends.
-      </p>
-    </div>
-  </section> -->
+    
+
+  </section>
 
     <footer class="footer">
       <p>&copy; 2024 SecureShare. All rights reserved.</p>
+      <p>We prioritize your privacy. Learn more about our <a href="/privacy-policy">Privacy Policy</a> and <a href="/terms">Terms of Service</a>.</p>
     </footer>
   </body>
 </html>

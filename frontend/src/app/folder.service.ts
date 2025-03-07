@@ -7,14 +7,11 @@ import { AuthService } from './auth.service';
   providedIn: 'root',
 })
 export class FolderService {
-  private apiUrl = 'http://127.0.0.1:8000/api'; // Your API URL
+  private apiUrl = 'https://127.0.0.1:8000/api';  // Make sure this is HTTPS
 
   constructor(private http: HttpClient, private authService: AuthService) {}
 
-  //getDeletedFiles(userId: string, headers: HttpHeaders): Observable<any[]> {
-    //const url = `http://127.0.0.1:8000/api/deleted-files/`; // No additional filters here
-    //return this.http.get<any[]>(url, { headers });
-  //}  
+
   getDeletedFiles(userId: string, headers: HttpHeaders): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/deleted-files/`, { headers });
   }

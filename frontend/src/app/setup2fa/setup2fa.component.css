@@ -1,28 +1,106 @@
+/* Full-page centering */
+body {
+  font-family: 'Arial', sans-serif;
+  background-color: #f4f6f9;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  margin: 0;
+}
+
+/* Centering the 2FA container */
 .setup-2fa {
-    text-align: center;
+  background: white;
+  width: 100%;
+  max-width: 400px;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+/* Fade-in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
   }
-  
-  img {
-    width: 200px;
-    height: 200px;
-    margin: 20px 0;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
-  
-  input {
-    margin: 10px;
-    padding: 5px;
-    width: 200px;
+}
+
+/* Center QR Code */
+.setup-2fa div {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+/* QR Code Image */
+.setup-2fa img {
+  width: 180px;
+  height: 180px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  background: #fff;
+  padding: 10px;
+}
+
+/* OTP Input */
+.setup-2fa input {
+  width: 100%;
+  padding: 12px;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  transition: all 0.3s ease-in-out;
+}
+
+.setup-2fa input:focus {
+  border-color: #ffb400;
+  box-shadow: 0 0 5px rgba(255, 180, 0, 0.5);
+  outline: none;
+}
+
+/* Verify Button */
+.setup-2fa button {
+  background-color: #ffb400;
+  color: white;
+  font-size: 1rem;
+  padding: 12px;
+  width: 100%;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.setup-2fa button:hover {
+  background-color: #e0a300;
+  transform: scale(1.05);
+}
+
+/* Success & Error Messages */
+.success {
+  color: green;
+  font-weight: bold;
+}
+
+.error {
+  color: red;
+  font-weight: bold;
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .setup-2fa {
+    width: 90%;
+    padding: 1.5rem;
   }
-  
-  button {
-    padding: 5px 10px;
-  }
-  
-  .success {
-    color: green;
-  }
-  
-  .error {
-    color: red;
-  }
-  
+}

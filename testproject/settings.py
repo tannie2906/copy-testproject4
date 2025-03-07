@@ -45,6 +45,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'myapp.middleware.XFrameOptionsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
@@ -61,7 +62,7 @@ ROOT_URLCONF = 'testproject.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / "myapp/templates"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -75,6 +76,16 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'testproject.wsgi.application'
+
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+
+# Allow embedding from localhost:4200
+CSP_FRAME_ANCESTORS = ["'self'", "http://localhost:4200"]
+
+CSP_DEFAULT_SRC = ["'self'"]
+CSP_STYLE_SRC = ["'self'", "https://fonts.googleapis.com"]
+CSP_FONT_SRC = ["'self'", "https://fonts.gstatic.com"]
 
 
 # Database
@@ -133,15 +144,22 @@ USE_I18N = True
 USE_TZ = True
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:4200",  # Your Angular app's URL
+    "https://localhost:4200",  # Your Angular app's URL
+    "https://127.0.0.1:4200",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:4200",
+    "https://localhost:4200",
+    "https://127.0.0.1:4200",
 ]
+
+SECURE_SSL_REDIRECT = True  # Only for local development
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
 
 CORS_ALLOW_CREDENTIALS = True
 DEBUG_PROPAGATE_EXCEPTIONS = True
+
 
 CORS_ALLOW_METHODS = [
     "GET", 
@@ -160,6 +178,7 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
     'x-csrf-token',
     "x-csrftoken",  
+    "enctype",
 ]
 
 CSRF_COOKIE_HTTPONLY = False  # Ensures the CSRF token is accessible by JavaScript.
@@ -223,6 +242,10 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # Root directory for all media fil
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
+
+# Allow iframe embedding from the same origin
+X_FRAME_OPTIONS = "ALLOW-FROM http://localhost:4200"
+
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

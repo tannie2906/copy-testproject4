@@ -11,9 +11,9 @@ import { Router } from '@angular/router';
 export class Setup2faComponent implements OnInit {
   qrCodeData: string | null = null;
   qrCodeUrl: SafeUrl | null = null;
-  otpCode: string = ''; // OTP entered by the user
-  verificationMessage: string | null = null; // Message after OTP verification
+  verificationMessage: string = '';
   verificationSuccess: boolean = false; // Whether OTP verification succeeded
+  otpCode: string = '';
 
   constructor(private authService: AuthService, private sanitizer: DomSanitizer, private router: Router) {}
 

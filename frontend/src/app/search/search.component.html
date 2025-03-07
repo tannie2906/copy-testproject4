@@ -54,17 +54,17 @@
                   [ngClass]="{ 'adjust-position': file.adjustDropdown }"
                   *ngIf="file.showDropdown"
                 >
-                  <a href="#" (click)="onRename(file)">Rename</a>
-                  <button (click)="onShare(file)">Share</button>
-                  <a href="#" (click)="onDownload(file, $event)">Download</a>
-                  <a href="#" (click)="onDelete(file, $event)">Delete</a>   <!-- No results -->
+                  <a href="#" (click)="onRename(file)">✏ Rename</a>
+                  <a href="#" (click)="onDelete(file, $event)">🗑 Delete</a> 
+                  <a href="#" (click)="onDownload(file, $event)">⬇ Download</a>
+                  <button (click)="onShare(file)">🔗 Share</button>
                 </div>
               </div>
             </td>
           </tr>
         </tbody>
       </table>
-  
+
       <!-- No results -->
       <p *ngIf="searchResults.length === 0">No results found.</p>
     </section>

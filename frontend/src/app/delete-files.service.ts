@@ -6,7 +6,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
   providedIn: 'root'
 })
 export class DeletedFilesService {
-  private baseUrl = 'http://localhost:8000/api';
+  private baseUrl = 'https://localhost:8000/api';
   private apiUrl = '/api/files/deleted'; 
   private deletedFilesKey = 'deletedFiles'; // Key to store files in localStorage
   headers: HttpHeaders | { [header: string]: string | string[]; } | undefined;

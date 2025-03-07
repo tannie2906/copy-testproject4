@@ -1,35 +1,25 @@
 <div class="home-page">
+  <!-- Header Section -->
   <div class="header">
-    <!-- Title -->
-    <h1 class="title">SecureShare</h1>
+    <h1 class="title">SecureFile</h1>
 
-    <!-- app.component.html -->
-<div *ngIf="isAuthenticated">
-  <div *ngFor="let notification of notifications" class="notification">
-    {{ notification }}
-  </div>
-</div>
-
-<!-- Button for testing notification -->
-<button (click)="testNotification()">Test Notification</button>
-    
-    <!-- Search Bar -->
+    <!-- Search Bar (Now Aligned to the Left) -->
     <div class="search-container">
       <input 
         [(ngModel)]="query"
         type="text"
         class="search-input"
-        placeholder="Search files or folders..." />
+        placeholder="Search files..." />
       <button class="search-button" (click)="search()">🔍</button>
-    </div>    
+    </div>   
 
-    <!-- Profile Picture as Login Button -->
-    <div class="profile-picture-container">
+    <!-- Profile Section -->
+    <div class="profile-section">
       <button class="profile-button" (click)="toggleDropdown()">
         <img 
           *ngIf="profilePictureUrl; else defaultProfile" 
           [src]="profilePictureUrl" 
-          alt="Profile Picture" 
+          alt="Profile" 
           class="profile-picture" />
         <ng-template #defaultProfile>
           <img src="assets/images/profile.png" alt="Default Profile" class="profile-picture" />
@@ -40,28 +30,29 @@
         <button *ngIf="isAuthenticated" (click)="onProfileClick()">Profile</button>
         <button *ngIf="isAuthenticated" (click)="onLogout()">Logout</button>
         <button *ngIf="isAuthenticated" (click)="goToSettings()">Settings</button>
+        
       </div>
     </div>
   </div>
 
-  <!-- Navbar -->
+  <!-- Sidebar Navigation -->
   <nav class="navbar">
-    <a routerLink="/home" class="home-button">Home</a>
-    <a routerLink="/folder" class="folder-button">Folder</a>
-    <a routerLink="/delete" class="delete-button">Bin</a> 
+    <a routerLink="/home" class="nav-item">🏠 Home</a>
+    <a routerLink="/folder" class="nav-item">📁 Folder</a>
+    <a routerLink="/delete" class="nav-item">🗑️ Bin</a> 
     <div class="profile-dropdown">
-      <a routerLink="/profile" class="profile-button">Profile</a>
+      <button class="nav-item dropdown-btn">👤 Profile</button>
       <div class="dropdown-content">
-        <a routerLink="/manage-account" class="manage-account-button">Manage Account</a>
-        <a routerLink="/settings" class="settings-button">Settings</a>
-        <a href="#" class="logout-button" (click)="onLogout()">Logout</a>
+        <a routerLink="/settings">⚙️ Settings</a>
+        <a href="#" (click)="onLogout()">🚪 Logout</a>
       </div>
     </div>
+    <a (click)="goToLockBox()" *ngIf="isAuthenticated">🔒 Lock Box</a>
   </nav>
 
   <!-- Search Results -->
   <div *ngIf="searchResults.length > 0" class="search-results">
-    <h3>Search Results:</h3>
+    <h3>🔍 Search Results:</h3>
     <ul>
       <li *ngFor="let file of searchResults">
         <strong>{{ file.file_name }}</strong> ({{ file.size }} bytes)
@@ -69,7 +60,6 @@
     </ul>
   </div>
 
-  <!-- Routed Components -->
+  <!-- Main Content -->
   <router-outlet></router-outlet>
-
 </div>

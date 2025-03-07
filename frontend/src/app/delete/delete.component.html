@@ -3,14 +3,15 @@
 
   <!-- Action Buttons -->
   <div class="actions">
-    <!-- Restore and Delete Selected Buttons -->
     <button class="btn btn-success" (click)="restoreSelectedFiles()" [disabled]="!selectedFiles.length">
-      Restore Selected
+      <i class="fas fa-undo"></i> Restore Selected
     </button>
     <button class="btn btn-danger" (click)="deleteSelectedFiles()" [disabled]="!selectedFiles.length">
-      Delete Selected
+      <i class="fas fa-trash-alt"></i> Delete Selected
     </button>
-    <button class="btn btn-warning" (click)="emptyTrash()">Empty Trash</button>
+    <button class="btn btn-warning" (click)="emptyTrash()">
+      <i class="fas fa-trash"></i> Empty Trash
+    </button>
   </div>
 
   <!-- Files Table -->
@@ -19,33 +20,27 @@
       <thead>
         <tr>
           <th>
-            <!-- Master Checkbox to Select All -->
-            <input
-              type="checkbox"
-              (change)="toggleSelectAll($event)"
-              [checked]="allSelected"
-            />
+            <input type="checkbox" (change)="toggleSelectAll($event)" [checked]="allSelected" />
           </th>
-          <th>File Name</th>
-          <th>Deleted At</th>
-          <th>Actions</th>
+          <th> File Name</th>
+          <th> Deleted At</th>
+          <th> Actions</th>
         </tr>
       </thead>
       <tbody>
         <tr *ngFor="let file of deletedFiles">
           <td>
-            <!-- Individual Checkbox for Each File -->
-            <input
-              type="checkbox"
-              [checked]="selectedFiles.includes(file.id)"
-              (change)="toggleSelection(file.id, $event)"
-            />
+            <input type="checkbox" [checked]="selectedFiles.includes(file.id)" (change)="toggleSelection(file.id, $event)" />
           </td>
           <td>{{ file.file_name }}</td>
-          <td>{{ file.deleted_at | date: 'short' }}</td>
+          <td>{{ file.deleted_at | date: 'medium' }}</td>
           <td class="action-buttons">
-            <button class="btn btn-primary" (click)="restoreFile(file.id)">Restore</button>
-            <button class="btn btn-danger" (click)="permanentlyDeleteFile(file.id)">Permanently Delete</button>
+            <button class="btn btn-primary" (click)="restoreFile(file.id)" title="Restore File">
+              <i class="fas fa-undo"></i> 🔄
+            </button>
+            <button class="btn btn-danger" (click)="permanentlyDeleteFile(file.id, $event)" title="Permanently Delete">
+              <i class="fas fa-times-circle"></i> 🗑️
+            </button>
           </td>
         </tr>
       </tbody>

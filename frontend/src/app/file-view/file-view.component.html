@@ -1,27 +1,52 @@
 <div *ngIf="file">
-    <h1>{{ file.name }}</h1>
+  <h1>{{ file.name }}</h1>
+
+  <!-- Render text files -->
+  <div *ngIf="file.type === 'text'">
+    <h2>File Content:</h2>
+    <pre>{{ file.content }}</pre>
+  </div>
+
+  <!-- Render image files -->
+  <div *ngIf="file.type === 'image'">
+    <h2>Image Preview:</h2>
+    <img [src]="file.url" alt="File Image" />
+  </div>
+
+  <!-- Render PDF files -->
+  <div *ngIf="file?.type === 'pdf'">
+    <h2>PDF Viewer:</h2>
+    <iframe 
+  [src]="sanitizePdfUrl(file.url)" 
+  width="100%" height="600px" 
+  style="border: none;">
+</iframe>
+
+  </div>
   
-    <!-- Render text files -->
-    <div *ngIf="file.type === 'text'">
-      <h2>File Content:</h2>
-      <pre>{{ file.content }}</pre>
-    </div>
-  
-    <!-- Render image files -->
-    <div *ngIf="file.type === 'image'">
-      <h2>Image Preview:</h2>
-      <img [src]="file.url" alt="File Image" />
-    </div>
-  
-    <!-- Render PDF files -->
-    <div *ngIf="file.type === 'pdf'">
-      <h2>PDF Viewer:</h2>
-      <embed [src]="file.url" type="application/pdf" width="100%" height="600px" />
-    </div>
-  
-    <!-- Handle unsupported file types -->
-    <div *ngIf="file.type === 'other'">
-      <h2>Download File:</h2>
-      <a [href]="file.url" target="_blank" download>Download {{ file.name }}</a>
+
+
+  <!-- Render DOCX content as text -->
+  <div *ngIf="file.type === 'docx'">
+    <h2>DOCX Content:</h2>
+    <pre>{{ file.content }}</pre>
+
+    <!-- Display tables properly -->
+    <div *ngIf="file.tables?.length">
+      <h3>Tables:</h3>
+      <div *ngFor="let table of file.tables">
+        <table border="1">
+          <tr *ngFor="let row of table">
+            <td *ngFor="let cell of row">{{ cell }}</td>
+          </tr>
+        </table>
+      </div>
     </div>
   </div>
+
+  <!-- Handle unsupported file types -->
+  <div *ngIf="file.type === 'other'">
+    <h2>Download File:</h2>
+    <a [href]="file.url" target="_blank" download>Download {{ file.name }}</a>
+  </div>
+</div>

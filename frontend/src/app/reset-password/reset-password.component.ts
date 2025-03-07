@@ -12,6 +12,7 @@ export class ResetPasswordComponent implements OnInit {
   token: string | null = null;
   uid: string | null = null;  // Add UID
   message: string | null = null;
+  success: boolean = false;
 
   constructor(
     private authService: AuthService,
@@ -39,10 +40,12 @@ export class ResetPasswordComponent implements OnInit {
     this.authService.resetPassword(this.uid, this.token, this.newPassword).subscribe(
       (response) => {
         this.message = 'Password reset successfully!';
+        this.success = true;
         setTimeout(() => this.router.navigate(['/login']), 2000); // Redirect after success
       },
       (error) => {
         this.message = 'Error resetting password.';
+        this.success = false;
         console.log(error);  // Log error to inspect the problem
       }
     );

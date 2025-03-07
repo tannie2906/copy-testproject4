@@ -25,7 +25,7 @@ export class FolderComponent implements OnInit {
   starredFiles: any[] = []; // Holds starred files
   selectedFileId: number | null = null;
   newFileName: string = '';
-  apiUrl: string = 'http://127.0.0.1:8000/api';
+  apiUrl: string = 'https://127.0.0.1:8000/api';
   uploadDropdownVisible: boolean = false;
   uploading = false;      // Track if upload is in progress
   progress: number | null = null;  // Track progress
@@ -66,12 +66,20 @@ export class FolderComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    document.addEventListener('click', this.handleClickOutside.bind(this));
     this.isAuthenticated = !!this.authService.getToken();
     if (!this.isAuthenticated) {
       this.errorMessage = 'You are not authenticated. Please log in.';
       return;
     }
     this.fetchFilesAndFolders();
+  }
+
+  handleClickOutside(event: Event): void {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.dropdown')) {
+      this.files.forEach(file => file.showDropdown = false);
+    }
   }
 
   getHeaders() {
@@ -135,8 +143,21 @@ export class FolderComponent implements OnInit {
 
   // Toggle dropdown visibility for a specific file
   toggleDropdown(file: any): void {
+    this.files.forEach(f => {
+      if (f !== file) {
+        f.showDropdown = false; // Close other dropdowns
+      }
+    });
+  
     file.showDropdown = !file.showDropdown;
   }
+
+  closeDropdown(file: any): void {
+    setTimeout(() => {
+      file.showDropdown = false;
+    }, 200); // Adds a slight delay for a smooth close
+  }
+  
 
   // Utility to format the file size to a readable format
   formatFileSize(size: number): string {
@@ -147,7 +168,7 @@ export class FolderComponent implements OnInit {
   }
 
   // File download functionality
-  onDownload(file: UserFile, event: Event): void {
+  onDownload(file: any, event: Event): void {
     event.preventDefault();
   
     const token = this.authService.getToken();
@@ -156,38 +177,42 @@ export class FolderComponent implements OnInit {
       return;
     }
   
-    console.log('Downloading file:', file.file_name); // Debug log
+    if (!file.id) {
+      console.error('File ID is missing:', file);
+      alert('Unable to download the file. File ID is missing.');
+      return;
+    }
   
     this.fileService.downloadFile(file.id, token).subscribe({
       next: (blob) => {
-        console.log('File downloaded successfully:', blob);
-        const downloadUrl = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = downloadUrl;
-        a.download = file.file_name || 'downloaded_file'; // Use correct filename
-        a.click();
-        window.URL.revokeObjectURL(downloadUrl);
+        console.log('File downloaded successfully:', file.file_name);
+        this.fileService.saveBlobToFile(blob, file.file_name);
       },
       error: (error) => {
         console.error('Error downloading file:', error);
         alert('Failed to download the file. Please try again.');
       },
     });
-  }  
+  }
 
   onRename(file: any): void {
-    const newName = prompt('Enter a new name for the file:', file.filename);
+    const originalExtension = file.filename.split('.').pop(); // Extract the file extension
+    const baseName = file.filename.split('.').slice(0, -1).join('.'); // Extract base name
   
-    // Validate input
+    // Prompt the user with the base name
+    const newName = prompt('Enter a new name for the file:', baseName);
     if (!newName || newName.trim() === '') {
       alert('File name cannot be empty.');
       return;
     }
   
-    // Perform rename operation
-    this.fileService.renameFile(file.id, newName).subscribe({
+    // Recombine base name with the original extension
+    const fullNewName = `${newName.trim()}.${originalExtension}`; // Combine new name with extension
+  
+    // Send the request to the backend
+    this.fileService.renameFile(file.id, fullNewName).subscribe({
       next: (response) => {
-        file.filename = newName; // Update UI
+        file.filename = fullNewName; // Update the UI
         alert('File renamed successfully!');
       },
       error: (error: HttpErrorResponse) => {
@@ -211,11 +236,6 @@ export class FolderComponent implements OnInit {
     this.fileInput.nativeElement.click();
   }
 
-  // Trigger file input click for folders
-  onFolderUploadClick(): void {
-    this.folderInput.nativeElement.click();
-  }
-
   // Handle File Upload (when selecting a file)
   onUploadFile(event: any) {
     const files = event.target.files;
@@ -227,20 +247,6 @@ export class FolderComponent implements OnInit {
     }
 
     this.uploadFiles(formData, false);
-  }
-
-  // Handle folder upload
-  onUploadFolder(event: any) {
-    const files = event.target.files;
-    const formData = new FormData();
-
-    // Loop through each file and add it with its relative path (for folders)
-    for (let file of files) {
-      formData.append('files', file, file.webkitRelativePath);
-    }
-
-    // Upload the files, passing true to indicate folder upload
-    this.uploadFiles(formData, true);
   }
 
   uploadFiles(formData: FormData, isFolder: boolean) {
@@ -333,11 +339,12 @@ export class FolderComponent implements OnInit {
       next: () => console.log('Star status updated'),
       error: (error) => {
         console.error('Error toggling star:', error);
-        file.isStarred = previousState; // Revert on failure
+        file.isStarred = !file.isStarred;// Revert on failure
         this.fetchStarredFiles(); // Refetch as a fallback
       }
     });
   }
+  
   
   loadFiles(): void {
     this.fileService.getFiles().subscribe(
@@ -350,33 +357,10 @@ export class FolderComponent implements OnInit {
     );
   }
 
-  //open folder
-  onOpenFolder(folderId: string) {
-    this.currentFolderId = folderId;
-    // Fetch files and subfolders within the folder (if necessary)
-    this.http.get(`http://localhost:8000/api/folder/${folderId}/`).subscribe((response: any) => {
-      this.files = response.files;
-    });
-  }
-  
-  loadFolderContents(folderId: number): void {
-    this.fileService.getFolderContents(folderId).subscribe({
-      next: (data) => {
-        this.files = [
-          ...data.folders.map((folder: any) => ({ ...folder, type: 'folder' })),
-          ...data.files.map((file: any) => ({ ...file, type: 'file' })),
-
-        ];
-      },
-      error: (error) => console.error('Failed to load folder contents', error),
-    });
-  }
-  
-
   async fetchFilesAndFolders() {
     const token = this.authService.getToken();
     try {
-      const response = await axios.get('http://127.0.0.1:8000/api/folders/', {
+      const response = await axios.get('https://127.0.0.1:8000/api/folders/', {
         headers: { Authorization: `Token ${token}` },
       });
       const data = response.data;
@@ -410,38 +394,54 @@ export class FolderComponent implements OnInit {
     const token = this.authService.getToken();
   
     // Prompt user for new name
-    const newFileName = window.prompt('Enter new file name:', '');
+    const originalFileName = this.files.find((file) => file.id === fileId)?.filename || '';
+    const fileExtension = originalFileName.split('.').pop(); // Extract the original extension
+    const baseName = originalFileName.split('.').slice(0, -1).join('.'); // Base name without extension
+  
+    const newFileName = window.prompt('Enter new file name:', baseName);
   
     // Validate input
     if (!newFileName || newFileName.trim() === '') {
       alert('File name cannot be empty!');
-      return; // Stop if name is invalid
+      return;
     }
   
-    const payload = { name: newFileName.trim() }; // Trimmed input
+    // Recombine the new base name with the original extension
+    const fullNewName = `${newFileName.trim()}.${fileExtension}`;
+    console.log('Full new name:', fullNewName);
   
-    console.log('Sending payload:', payload); // Debug payload
+    const payload = { name: fullNewName }; // Send full name with extension
   
-    // Send request
-    await axios.post(
-      `http://127.0.0.1:8000/api/rename/${fileId}/`,
-      payload,
-      {
-        headers: {
-          Authorization: `Token ${token}`,
-          'Content-Type': 'application/json', // Ensure JSON format
-        },
+    try {
+      // Send request
+      await axios.post(
+        `https://127.0.0.1:8000/api/rename/${fileId}/`,
+        payload,
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+  
+      alert('File renamed successfully!');
+      this.fetchFilesAndFolders(); // Refresh file list
+    } catch (error: unknown) {
+      // Cast error as AxiosError
+      if (axios.isAxiosError(error)) {
+        alert(error.response?.data?.error || 'Failed to rename the file.');
+      } else {
+        console.error('Unexpected error:', error);
+        alert('An unexpected error occurred.');
       }
-    );
-  
-    alert('File renamed successfully!');
-    this.fetchFilesAndFolders(); // Refresh files
+    }
   }
   
   async deleteFile(fileId: number) {
     const token = this.authService.getToken();
     await axios.post(
-      `http://127.0.0.1:8000/api/delete/${fileId}/`,
+      `https://127.0.0.1:8000/api/delete/${fileId}/`,
       {},
       {
         headers: { Authorization: `Token ${token}` },
@@ -454,7 +454,7 @@ export class FolderComponent implements OnInit {
   async downloadFile(fileId: number) {
     const token = this.authService.getToken();
     const response = await axios.get(
-      `http://127.0.0.1:8000/api/download/${fileId}/`,
+      `https://127.0.0.1:8000/api/download/${fileId}/`,
       {
         headers: { Authorization: `Token ${token}` },
         responseType: 'blob', // Download as binary data
@@ -498,6 +498,21 @@ export class FolderComponent implements OnInit {
   onOpenFile(file: any): void {
     this.router.navigate([`/files/view/${file.id}`]);
   }
+
+  get selectedFileNameWithoutExtension(): string {
+    return this.selectedFile?.split('.').slice(0, -1).join('.') || '';
+  }
+
+  moveToLockbox(fileId: number) {
+    const token = localStorage.getItem('token');
+    this.http.post(`https://127.0.0.1:8000/api/lockbox/move/${fileId}/`, {}, {
+      headers: new HttpHeaders({ 'Authorization': `Token ${token}` }),
+    }).subscribe(() => {
+      alert('File moved to Lock Box!');
+      this.fetchFilesAndFolders();
+    });
+  }
+  
 }
 
 

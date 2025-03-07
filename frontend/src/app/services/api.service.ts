@@ -7,7 +7,7 @@ import { environment } from 'src/environments/environment';
   providedIn: 'root'
 })
 export class ApiService {
-  private apiUrl = 'http://127.0.0.1:8000';
+  private apiUrl = 'https://127.0.0.1:8000';
   constructor(private http: HttpClient) {}
 
   // Function to send DELETE request with CSRF token
@@ -17,7 +17,7 @@ export class ApiService {
       'X-CSRFToken': csrfToken,
     });
 
-    return this.http.delete(`http://127.0.0.1:8000/api/permanently-delete/${id}/`, { headers });
+    return this.http.delete(`https://127.0.0.1:8000/api/permanently-delete/${id}/`, { headers });
   }
 
   // Helper function to retrieve CSRF token from cookies

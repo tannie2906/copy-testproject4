@@ -1,4 +1,4 @@
-/* General reset and font styling */
+/* General Reset */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -12,36 +12,39 @@ body {
   line-height: 1.6;
 }
 
-/* Layout styling */
+.login-icon {
+  width: 200px; /* Balanced Size */
+  height: auto; /* Maintain aspect ratio */
+  filter: brightness(1.8) contrast(1.2); 
+}
+
+
+/* Login Page Layout */
 .login-page {
   display: flex;
   min-height: 100vh;
-}
-
-.login-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
+  background: linear-gradient(to right, #002855, #04488c);
   padding: 2rem;
-  background-color: #f9fafb;
 }
 
-/* Left section styling */
+/* Left Section */
 .login-left {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background-color: #002855; /* Dark blue background */
-  color: #fff;
+  padding: 3rem;
+  background-color: linear-gradient(to right, #002855, #04488c);
+  color: white;
+  text-align: center;
+  max-width: 450px;
 }
 
 .login-left img {
-  width: 100px;
-  height: auto;
+  width: 180px;
   margin-bottom: 1rem;
 }
 
@@ -56,23 +59,37 @@ body {
   opacity: 0.8;
 }
 
-/* Right section (form) styling */
+/* Right Section */
 .login-form-container {
   flex: 1;
-  max-width: 400px;
-  background-color: #fff;
+  max-width: 420px;
+  background: white;
   padding: 3rem;
-  border-radius: 10px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   text-align: center;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+/* Smooth Fade-in Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .login-form-container h2 {
   font-size: 2rem;
   color: #002855;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
+/* Input Fields */
 .form-group {
   margin-bottom: 1.5rem;
   text-align: left;
@@ -85,47 +102,104 @@ label {
   margin-bottom: 0.5rem;
 }
 
+.input-container {
+  display: flex;
+  align-items: center;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #f8f8f8;
+  padding: 12px;
+  transition: all 0.3s ease-in-out;
+}
+
+.input-container:focus-within {
+  border-color: #ffb400;
+  background: #fff;
+  box-shadow: 0 0 10px rgba(255, 180, 0, 0.2);
+}
+
+.input-icon {
+  font-size: 16px;
+  color: #888;
+  margin-right: 10px;
+}
+
 input[type="text"],
 input[type="password"] {
   width: 100%;
-  padding: 0.75rem;
+  border: none;
+  background: transparent;
   font-size: 1rem;
-  border: 1px solid #ddd;
-  border-radius: 5px;
+  outline: none;
+  padding: 8px;
 }
 
-input[type="text"]:focus,
-input[type="password"]:focus {
-  outline-color: #002855;
-}
-
+/* Buttons */
 button {
   padding: 0.75rem 1.5rem;
   font-size: 1rem;
-  border-radius: 5px;
+  border-radius: 8px;
   cursor: pointer;
   width: 100%;
   margin-bottom: 1rem;
+  transition: all 0.3s ease;
 }
 
 .cta-button {
-  background-color: #ffb400; /* Yellow button */
-  color: #fff;
+  background-color: #ffb400;
+  color: white;
   border: none;
+  font-weight: bold;
 }
 
 .cta-button:hover {
   background-color: #e0a300;
+  transform: scale(1.05);
 }
 
+/* Register Button */
 .register-button {
   background-color: transparent;
   color: #002855;
   border: none;
   text-decoration: underline;
   cursor: pointer;
+  font-weight: bold;
 }
 
 .register-button:hover {
   color: #0056b3;
+}
+
+/* Forgot Password Link */
+.forgot-password {
+  color: #ffb400;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.forgot-password:hover {
+  text-decoration: underline;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .login-page {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .login-left {
+    max-width: 100%; /* Reduce size instead of hiding */
+    padding: 2rem;
+  }
+
+  .login-left img {
+    width: 150px; /* Smaller for mobile */
+  }
+
+  .login-form-container {
+    width: 90%;
+    padding: 2rem;
+  }
 }

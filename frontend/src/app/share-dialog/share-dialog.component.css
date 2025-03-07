@@ -1,0 +1,69 @@
+::ng-deep .mat-dialog-container {
+    border-radius: 12px;
+    padding: 24px;
+    background: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Title */
+  .dialog-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #6a6969;
+    display: flex;
+    align-items: center;
+  }
+  
+  /* Content Styling */
+  .dialog-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-bottom: 12px;
+  }
+  
+  /* Full-width inputs */
+  .full-width {
+    width: 100%;
+  }
+  
+  /* Checkbox */
+  .custom-checkbox {
+    margin-top: 10px;
+    font-size: 14px;
+  }
+  
+  /* Dialog Actions */
+  .dialog-actions {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 16px;
+  }
+  
+  /* Buttons */
+  .cancel-btn {
+    color: #666;
+  }
+  
+  .share-btn {
+    background: #1976d2;
+    color: white;
+    font-weight: bold;
+    border-radius: 8px;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .share-btn:hover {
+    background: #1565c0;
+  }
+
+  .custom-checkbox {
+    margin-top: 12px;
+    font-size: 14px;
+    color: #333; /* Make sure it's visible */
+  }
+  
+  

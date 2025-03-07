@@ -1,66 +1,71 @@
 <div class="settings-container">
-  <!-- Change Password Section -->
-  <div class="settings-section">
+  <!-- Tab Navigation -->
+  <div class="tab-container">
+    <button 
+      class="tab-button" 
+      [class.active]="selectedTab === 'password'"
+      (click)="selectTab('password')">
+       Security
+    </button>
+    <button 
+      class="tab-button" 
+      [class.active]="selectedTab === 'lockbox'"
+      (click)="selectTab('lockbox')">
+      🔒
+    </button>
+  </div>
+
+  <!-- Change Password Tab -->
+  <div *ngIf="selectedTab === 'password'" class="tab-content">
     <h3 class="section-title">Change Password</h3>
     <form (submit)="changePassword()" class="settings-form">
-      <!-- Old Password -->
       <div class="form-group">
         <label for="oldPassword">Old Password:</label>
-        <input
-          id="oldPassword"
-          type="password"
-          [(ngModel)]="passwordData.old_password"
-          name="oldPassword"
-          required
-        />
+        <input id="oldPassword" type="password" [(ngModel)]="passwordData.old_password" name="oldPassword" required />
       </div>
 
-      <!-- New Password -->
       <div class="form-group">
         <label for="newPassword">New Password:</label>
-        <input
-          id="newPassword"
-          type="password"
-          [(ngModel)]="passwordData.new_password"
-          name="newPassword"
-          required
-        />
+        <input id="newPassword" type="password" [(ngModel)]="passwordData.new_password" name="newPassword" required />
       </div>
 
-      <!-- Confirm Password -->
       <div class="form-group">
         <label for="confirmPassword">Confirm Password:</label>
-        <input
-          id="confirmPassword"
-          type="password"
-          [(ngModel)]="passwordData.confirm_password"
-          name="confirmPassword"
-          required
-        />
-      </div>
-
-      <!-- Password Requirements -->
-      <div class="password-requirements">
-        <p class="requirements-title">Password Requirements:</p>
-        <ul class="requirements-list">
-          <li>At least 8 characters long</li>
-          <li>Should not be too similar to your username or email</li>
-          <li>Must contain at least 1 uppercase letter</li>
-          <li>Must include at least 1 number</li>
-          <li>Cannot be entirely numeric</li>
-        </ul>
+        <input id="confirmPassword" type="password" [(ngModel)]="passwordData.confirm_password" name="confirmPassword" required />
       </div>
 
       <button type="submit" class="btn-save">Change Password</button>
     </form>
   </div>
 
-  <!-- Delete Account Section -->
+  <!-- Password Requirements -->
+  <div class="password-requirements">
+    <p class="requirements-title">Password Requirements:</p>
+    <ul class="requirements-list">
+      <li>✅ At least 8 characters long</li>
+      <li>✅ Should not be too similar to your username or email</li>
+      <li>✅ Must include at least 1 number</li>
+      <li>✅ Must contain at least 1 uppercase letter</li>
+      <li>✅ Cannot be entirely numeric</li>
+    </ul>
+  </div>
+
+  <!-- Lock Box Settings Tab -->
+  <div *ngIf="selectedTab === 'lockbox'" class="tab-content">
+    <h3> Lock Box </h3>
+    <form (ngSubmit)="savePassword()">
+      <label for="password">Set / Change Lock Box Password:</label>
+      <input type="password" id="password" [(ngModel)]="lockboxPassword" name="lockboxPassword" required />
+      <button type="submit">Save Password</button>
+    </form>
+    <p *ngIf="message" class="success">{{ message }}</p>
+  </div>
+
+  <!-- Delete Account (Always Visible) -->
   <div class="settings-section danger-zone">
     <h3 class="section-title">Delete Account</h3>
     <p class="warning-text">
-      Warning: This action is irreversible and will delete all your data
-      associated with this account.
+      ⚠️ Warning: This action is irreversible and will delete all your data.
     </p>
     <button (click)="deleteAccount()" class="btn-delete">Delete Account</button>
   </div>

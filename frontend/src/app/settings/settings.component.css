@@ -1,32 +1,58 @@
 /* General Settings Container */
 .settings-container {
-  max-width: 600px;
+  max-width: 80%;
   margin: 20px auto;
-  padding: 20px;
+  padding: 30px;
   font-family: 'Arial', sans-serif;
-  background: #f9f9f9;
-  border: 1px solid #ddd;
+  background: #ffffff;
   border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Tabs */
+.tab-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.tab-button {
+  padding: 12px 20px;
+  border: none;
+  background: #e0e0e0;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  margin: 0 10px;
+  border-radius: 5px;
+  transition: background 0.3s;
+}
+
+.tab-button.active {
+  background: #007bff;
+  color: white;
+}
+
+/* Tab Content */
+.tab-content {
+  background: white;
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 /* Sections */
 .settings-section {
+  width: 100%;
   margin-bottom: 20px;
-  padding: 20px;
-  border: 1px solid #ddd;
+  padding: 25px;
   border-radius: 8px;
   background: white;
 }
 
-.danger-zone {
-  border: 1px solid #dc3545;
-  background: #f8d7da;
-}
-
 /* Titles */
 .section-title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: bold;
   margin-bottom: 15px;
   color: #333;
@@ -45,45 +71,16 @@
 
 input {
   width: 100%;
-  padding: 10px;
+  padding: 12px;
   border: 1px solid #ccc;
   border-radius: 5px;
-  font-size: 14px;
+  font-size: 16px;
   transition: border-color 0.3s;
 }
 
 input:focus {
   border-color: #007bff;
   outline: none;
-}
-
-/* Buttons */
-.btn-save {
-  padding: 10px 20px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.btn-save:hover {
-  background-color: #0056b3;
-}
-
-.btn-delete {
-  padding: 10px 20px;
-  background-color: #dc3545;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.btn-delete:hover {
-  background-color: #c82333;
 }
 
 /* Password Requirements */
@@ -105,9 +102,64 @@ input:focus {
   line-height: 1.6;
 }
 
+/* Buttons */
+.btn-save {
+  padding: 12px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.btn-save:hover {
+  background-color: #0056b3;
+}
+
+.btn-delete {
+  padding: 12px 20px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.btn-delete:hover {
+  background-color: #c82333;
+}
+
+/* Danger Zone */
+.danger-zone {
+  border: 1px solid #dc3545;
+  background: #f8d7da;
+}
+
 /* Warning Text */
 .warning-text {
   color: #721c24;
   font-size: 14px;
   margin-bottom: 15px;
+}
+
+/* Success Message */
+.success-message {
+  color: #28a745;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .settings-container {
+    max-width: 95%;
+    padding: 20px;
+  }
+
+  .tab-button {
+    font-size: 14px;
+    padding: 10px;
+  }
 }

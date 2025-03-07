@@ -1,53 +1,57 @@
-<div *ngIf="loading" class="loading-spinner">
-    Loading...
-  </div>
-  
-  <div *ngIf="!loading" class="preview-container">
-    <h2>{{ fileName }}</h2>
-    <p>Type: {{ fileType }}</p>
-    <p>Size: {{ fileSize }}</p>
-  
-    <!-- Image Preview -->
-    <!-- Secure image preview -->
-    <!-- Display preview based on file type -->
+<!--preview file sharing -->
+<div *ngIf="loading" class="loading-spinner">Loading...</div>
+
+<div *ngIf="!loading" class="preview-container">
+  <h2>{{ fileName }}</h2>
+  <p>Type: {{ fileType }}</p>
+  <p>Size: {{ fileSize }}</p>
+
+  <!-- Image Preview -->
   <div *ngIf="fileType.startsWith('image/')">
-    <img
-      [src]="previewUrl + '?token=' + getAuthToken()"
-      alt="File Preview"
-      class="preview-image"
-    />
+    <img [src]="previewUrl" alt="File Preview" />
   </div>
 
+  <!-- PDF Preview -->
   <div *ngIf="fileType === 'application/pdf'">
-    <iframe
-      [src]="previewUrl + '?token=' + getAuthToken()"
-      class="preview-frame"
-    ></iframe>
+    <iframe [src]="sanitizePdfUrl(previewUrl)" class="preview-frame"></iframe>
   </div>
 
-  <div *ngIf="!fileType.startsWith('image/') && fileType !== 'application/pdf'">
-    <p>File preview is not available for this format.</p>
-  </div>
-
-  <a [href]="previewUrl + '?token=' + getAuthToken()" download class="download-btn">
-    Download File
-  </a>
+  <div class="preview-container" oncontextmenu="return false;">
+    <iframe [src]="sanitizePdfUrl(previewUrl)" class="file-preview"></iframe>
 </div>
-  
-  
-    <!-- PDF Preview -->
-    <div *ngIf="fileType === 'application/pdf'">
-      <iframe [src]="previewUrl" class="pdf-preview"></iframe>
+
+<div class="preview-container">
+  <div class="watermark">{{ getUserEmail() }}</div>
+  <iframe [src]="sanitizePdfUrl(previewUrl)" class="file-preview"></iframe>
+</div>
+
+  <!-- DOCX Preview -->
+  <div *ngIf="fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'">
+    <div class="docx-preview">
+      <p>{{ extractedText }}</p>
     </div>
-  
-    <!-- Unsupported File -->
-    <div *ngIf="!fileType.startsWith('image/') && fileType !== 'application/pdf'">
-      <p>Preview not available for this file type.</p>
-    </div>
-  
-    <!-- Download Button -->
-    <a [href]="previewUrl" download>
-      <button>Download File</button>
-    </a>
-  
-  
+  </div>
+
+  <!-- Unsupported File -->
+  <div *ngIf="!fileType.startsWith('image/') && fileType !== 'application/pdf' && fileType !== 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'">
+    <p>Preview not available for this file type.</p>
+  </div>
+
+<!-- Download Button -->
+<a *ngIf="canDownload" [href]="getPreviewUrl()" download class="download-btn">Download File</a>
+
+
+<p *ngIf="!canDownload" class="warning-text">
+  Download is disabled for this file.
+</p>
+
+ <!-- Conditional Download Button -->
+ <a *ngIf="canDownload" [href]="previewUrl + '?token=' + getAuthToken()" download class="download-btn">
+  Download File
+</a>
+<p *ngIf="!canDownload" class="warning-text">
+  Download is disabled for this file.
+</p>
+
+<div class="watermark">{{ getUserEmail() }}</div>
+

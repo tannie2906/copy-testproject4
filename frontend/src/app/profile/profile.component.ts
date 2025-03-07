@@ -19,44 +19,40 @@ export class ProfileComponent implements OnInit {
   selectedFile: File | null = null; // For file upload
   isEditing = false; // Toggle for edit mode
 
-  constructor(
-    private authService: AuthService,
-    private settingsService: SettingsService
-  ) {}
+  constructor(private settingsService: SettingsService, private authService: AuthService) {}
 
   ngOnInit(): void {
     this.authService.profile$.subscribe((data) => {
       if (data) {
         this.profile = data;
   
-        // Ensure 'profile_picture' exists in the response data
+        // Ensure 'profile_picture' exists and append base URL if it's relative
         if (this.profile.profile_picture) {
-          // Append base URL if the profile_picture is relative
-          this.profile.picture = this.profile.profile_picture.startsWith('http') 
+          this.profile.picture = this.profile.profile_picture.startsWith('http')
             ? this.profile.profile_picture
-            : `http://localhost:8000${this.profile.profile_picture}`;
+            : `https://127.0.0.1:8000${this.profile.profile_picture}`;
         } else {
           this.profile.picture = this.defaultProfilePicture;
         }
   
-        // Ensure username is part of the profile
         console.log('Profile data:', this.profile);
       } else {
         const token = localStorage.getItem('auth_token');
         if (token) {
-          // Fetch the profile from the backend if not available
+          // Fetch profile from backend if not already available
           this.authService.getProfile(token).subscribe({
             next: (profileData) => {
               this.profile = profileData;
   
               // Handle profile picture if it exists
               if (this.profile.profile_picture) {
-                this.profile.picture = this.profile.profile_picture;
+                this.profile.picture = this.profile.profile_picture.startsWith('http')
+                  ? this.profile.profile_picture
+                  : `https://127.0.0.1:8000${this.profile.profile_picture}`;
               } else {
                 this.profile.picture = this.defaultProfilePicture;
               }
   
-              // Ensure username is part of the profile
               console.log('Fetched Profile data:', this.profile);
             },
             error: (err) => {
@@ -67,6 +63,7 @@ export class ProfileComponent implements OnInit {
       }
     });
   }
+  
 
   onFileChange(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -99,13 +96,18 @@ export class ProfileComponent implements OnInit {
       this.settingsService.uploadProfilePicture(formData).subscribe({
         next: (response: any) => {
           console.log('Profile picture updated successfully!');
-          this.profile.picture = response.profile_picture_url; // Update picture URL
-          this.selectedFile = null; // Clear selected file
+
+          // Update profile picture in AuthService to notify AppComponent
+          this.authService.updateProfilePicture(response.profile_picture_url);
+
+          this.profile.picture = response.profile_picture_url;
+          this.selectedFile = null;
         },
         error: (err) => {
           console.error('Error uploading profile picture:', err);
         },
       });
+      
     }
   }
 

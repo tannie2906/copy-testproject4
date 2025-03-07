@@ -3,8 +3,7 @@ import { Router } from '@angular/router';
 import { AuthService } from './auth.service';
 import { ApiService } from './services/api.service';
 import { HttpClient } from '@angular/common/http';
-import { UserFile } from './models/user-file.model';
-import { NotificationService } from './services/notification.service'; 
+import { Subscription } from 'rxjs';
 
 export interface File {
   id: number;
@@ -40,64 +39,99 @@ export class AppComponent implements OnInit {
   query: string = '';
   totalPages: number = 0;
   currentPage: number = 1;
-  notifications: string[] = [];
+  authSubscription!: Subscription;
 
   constructor(
     private authService: AuthService,
     private router: Router,
     private apiService: ApiService,
     private http: HttpClient,
-    private notificationService: NotificationService
   ) {}
 
   ngOnInit(): void {
-    // Always check the authentication status when the component is initialized
-    this.checkAuthenticationStatus();
-
-    // Fetch user profile data (e.g., picture) if authenticated
-    if (this.isAuthenticated) {
-      const token = localStorage.getItem('auth_token');
-      if (token) {
-        this.authService.getProfile(token).subscribe({
-          next: (data) => {
-            this.profilePictureUrl = data.picture || 'assets/images/profile.png'; // Default if no picture
-          },
-          error: (err) => {
-            console.error('Error fetching profile:', err);
-          }
-        });
+    // Subscribe to authentication state changes
+    this.authSubscription = this.authService.authState$.subscribe(isAuth => {
+      this.isAuthenticated = isAuth;
+      
+      if (isAuth) {
+        this.fetchProfile(); // Fetch profile when logged in
+      } else {
+        this.resetProfilePicture(); // Reset to default on logout
       }
-    }
-    // Subscribe to notifications
-    this.notificationService.notifications$.subscribe((notifications) => {
-      this.notifications = notifications;
     });
+  
+    // Listen to profile updates dynamically
+    this.authService.profile$.subscribe(profile => {
+      if (profile && profile.picture) {
+        this.profilePictureUrl = profile.picture; // Update when profile changes
+      }
+    });
+  
+    document.addEventListener('click', this.handleClickOutside.bind(this));
+  }
+
+  fetchProfile(): void {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      this.authService.getProfile(token).subscribe({
+        next: (data) => {
+          this.profilePictureUrl = data.picture || 'assets/images/profile.png';
+        },
+        error: (err) => {
+          console.error('Error fetching profile:', err);
+        }
+      });
+    }
+  }
+
+  handleClickOutside(event: Event): void {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.profile-section')) {
+      this.dropdownVisible = false;
+    }
   }
   
-
-
   goToLogin() {
     this.router.navigate(['/login']);  // Navigate to the login page
   }
 
   onLogin(): void {
-    // Navigate to login page or trigger login functionality
     this.router.navigate(['/login']);
   }
 
   onLogout(): void {
-    // Clear authentication token and update authentication status
-    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_token'); // clear roken
+    this.authService.logout();  // Notify auth service
     this.isAuthenticated = false;  // Immediately update isAuthenticated to false
+    this.resetProfilePicture();  // Reset profile image
     this.router.navigate(['/home']);
+    this.closeDropdown();
+  }
+
+  // Function to reset the profile picture on logout
+  resetProfilePicture(): void {
+    this.profilePictureUrl = 'assets/images/profile.png';
   }
 
   checkAuthenticationStatus(): void {
     this.isAuthenticated = this.authService.isAuthenticated();
   }
 
+  goToLockBox(): void {
+    if (!this.isAuthenticated) {
+      alert("You must log in to access the Lock Box.");
+      this.router.navigate(['/login']);
+    } else {
+      this.router.navigate(['/lockbox']);
+    }
+  }
+  
   toggleDropdown(): void {
     this.dropdownVisible = !this.dropdownVisible;
+  }
+
+  closeDropdown(): void {
+    this.dropdownVisible = false;
   }
 
   onProfileClick(): void {
@@ -106,10 +140,12 @@ export class AppComponent implements OnInit {
     } else {
       this.router.navigate(['/login']);    // Navigate to login page if not authenticated
     }
+    this.closeDropdown();
   }
 
   goToSettings(): void {
     this.router.navigate(['/settings']);
+    this.closeDropdown();
   }
   
   //search bar
@@ -117,10 +153,9 @@ export class AppComponent implements OnInit {
     if (this.query.trim()) {
       this.router.navigate(['/search'], { queryParams: { q: this.query, page: 1 } });
     }
-  }  
+  }
   
-  // Optionally, you can trigger a notification for testing
-  testNotification() {
-    this.notificationService.addNotification("A file has been shared with you!");
+  ngOnDestroy(): void {
+    this.authSubscription.unsubscribe(); // Prevent memory leaks
   }
 }  

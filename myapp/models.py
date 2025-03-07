@@ -9,6 +9,8 @@ import uuid
 import os
 from django_otp.models import Device
 from datetime import datetime
+from django.contrib.auth.hashers import make_password
+from django.contrib.auth.hashers import check_password
 
 def custom_file_name(instance, filename):
     # Extract file extension
@@ -47,6 +49,7 @@ class File(models.Model):
     file_path = models.CharField(max_length=500, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     folder = models.ForeignKey(Folder, on_delete=models.CASCADE, null=True, blank=True, default=None)
+    is_locked = models.BooleanField(default=False)
 
 
     # Custom save method
@@ -67,6 +70,31 @@ class SharedFile(models.Model):
     shared_with = models.EmailField()
     shared_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="shared_files")
     created_at = models.DateTimeField(auto_now_add=True)
+    share_token = models.CharField(
+        max_length=255, 
+        default=uuid.uuid4,  # Generates a unique token
+        unique=True
+    )
+    expiry_time = models.DateTimeField()
+    password_hash = models.CharField(max_length=255, blank=True, null=True)
+    allow_download = models.BooleanField(default=False)  # Can download?
+    one_time_view = models.BooleanField(default=False)  
+    has_been_viewed = models.BooleanField(default=False)  
+
+
+    def is_expired(self):
+        return now() > self.expiry_time
+    
+    def set_password(self, password):
+        """Hash and store the password securely"""
+        if password:
+            self.password_hash = make_password(password)
+
+    def check_password(self, password):
+        """Verify the entered password"""
+        if self.password_hash:
+            return check_password(password, self.password_hash)
+        return True  # If no password was set, allow access
     
 class UploadedFile(models.Model):
     file_name = models.CharField(max_length=100)
@@ -129,3 +157,20 @@ class Notification(models.Model):
 
     def __str__(self):
         return f'Notification for {self.user.username}: {self.message}'
+    
+class AuditLog(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    action = models.CharField(max_length=50)  # e.g., 'upload', 'download'
+    file = models.ForeignKey('File', on_delete=models.CASCADE)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+class Lockbox(models.Model):
+    user = models.OneToOneField('auth.User', on_delete=models.CASCADE)
+    password_hash = models.CharField(max_length=255)
+
+    def set_password(self, raw_password):
+        self.password_hash = make_password(raw_password)
+        self.save()
+
+    def check_password(self, raw_password):
+        return check_password(raw_password, self.password_hash)

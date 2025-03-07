@@ -1,26 +1,20 @@
-<div>
-    <h2>Set up Two-Factor Authentication</h2>
-    <p>Scan the QR code below with your authenticator app:</p>
-    <div *ngIf="qrCodeData">
-      <img [src]="qrCodeData" alt="QR Code for 2FA" />
-    </div>
-    <p *ngIf="qrCodeData">Alternatively, use this key in your authenticator app:</p>
-    <p *ngIf="qrCodeData">{{ qrCodeData }}</p>
-  
-    <div>
-      <h3>Verify Your OTP</h3>
-      <input
-        type="text"
-        [(ngModel)]="otpCode"
-        placeholder="Enter OTP from Authenticator"
-      />
-      <button (click)="verifyOtp()">Verify OTP</button>
-    </div>
-  
-    <div *ngIf="verificationMessage">
-      <p [style.color]="verificationSuccess ? 'green' : 'red'">
-        {{ verificationMessage }}
-      </p>
-    </div>
+<div class="setup-2fa">
+  <h2>Set up Two-Factor Authentication</h2>
+  <p>Scan the QR code below with your authenticator app:</p>
+
+  <!-- Display the QR Code only if it's available -->
+  <div *ngIf="qrCodeData">
+    <img [src]="qrCodeData" alt="QR Code for 2FA" />
   </div>
-  
+
+  <h3>Verify Your OTP</h3>
+  <input type="text" [(ngModel)]="otpCode" placeholder="Enter OTP from Authenticator" />
+  <button (click)="verifyOtp()">Verify OTP</button>
+
+  <!-- Show verification message with success/error styling -->
+  <div *ngIf="verificationMessage">
+    <p [class.success]="verificationSuccess" [class.error]="!verificationSuccess">
+      {{ verificationMessage }}
+    </p>
+  </div>
+</div>

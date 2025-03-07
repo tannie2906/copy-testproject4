@@ -3,6 +3,8 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { HttpRequest, HttpHandler, HttpEvent, HttpInterceptor } from '@angular/common/http';
 import { Observable, BehaviorSubject, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';  // Add this import
+//import { SettingsService } from './services/settings.service';
+import { environment } from 'src/environments/environment';
 
 import axios from 'axios';
 
@@ -10,14 +12,16 @@ import axios from 'axios';
   providedIn: 'root',
 })
 export class AuthService {
-  private apiUrl = 'http://127.0.0.1:8000/api'; // Ensure this is correct
+  private apiUrl = 'https://127.0.0.1:8000/api'; 
   private isLoggedIn = false;
-  private registerUrl = 'http://127.0.0.1:8000/api/register/';
+  private registerUrl = 'https://127.0.0.1:8000/api/register/';
   private tokenKey = 'auth_token';
   private profileSubject = new BehaviorSubject<any>(null);
   public profile$ = this.profileSubject.asObservable();
   private token: string | null = null; 
   private twoFactorVerified: boolean = false;
+  private authState = new BehaviorSubject<boolean>(this.isAuthenticated());
+  authState$ = this.authState.asObservable(); // Expose as observable
   
   constructor(private http: HttpClient) {}
 
@@ -31,7 +35,9 @@ export class AuthService {
 
   
   login(username: string, password: string) {
-    return this.http.post<any>(`${this.apiUrl}/login/`, { username, password }).pipe(
+    return this.http.post<any>(
+      `${this.apiUrl}/login/`, 
+      { username, password }, { withCredentials: true }).pipe(
       tap((response: any) => {
         if (response && response.token) {
           this.isLoggedIn = true;
@@ -40,9 +46,10 @@ export class AuthService {
           if (this.token) {
             localStorage.setItem(this.tokenKey, this.token);
           }
+          this.authState.next(true);
         }
       })
-    );
+    ) 
   }
 
   isAuthenticated(): boolean {
@@ -99,6 +106,7 @@ export class AuthService {
   logout(): void {
     localStorage.removeItem(this.tokenKey);
     this.isLoggedIn = false;
+    this.authState.next(false);
   }
 
   // Fetch user profile
@@ -106,19 +114,23 @@ export class AuthService {
     return this.http.get(`${this.apiUrl}/profile/`, {
       headers: { Authorization: `Token ${token}` },
     }).pipe(
-      tap((profile) => {
-        this.profileSubject.next(profile); // Update the shared state
+      tap((profileData: any) => {
+        this.profileSubject.next(profileData);  // Update profile data
       })
     );
   }
 
-  updateProfileState(updatedProfile: any): void {
-    this.profileSubject.next(updatedProfile);
+  // Update profile picture and broadcast the update
+  updateProfilePicture(newPictureUrl: string): void {
+    const updatedProfile = { ...this.profileSubject.value, picture: newPictureUrl };
+    this.profileSubject.next(updatedProfile);  // Broadcast profile picture update
   }
 
   updateProfile(token: string, data: any): Observable<any> {
     const headers = new HttpHeaders().set('Authorization', `Token ${token}`);
-    return this.http.put<any>(`${this.apiUrl}/profile/`, data, { headers });
+    return this.http.put<any>(`${this.apiUrl}/profile/`, data, { headers }).pipe(
+      tap(updatedProfile => this.profileSubject.next(updatedProfile))  // Broadcast the updated profile
+    );
   }
 
   getSettings(token: string): Observable<any> {
@@ -136,32 +148,32 @@ export class AuthService {
   }
 
   initializeCSRF(): Observable<any> {
-    return this.http.get('http://127.0.0.1:8000/api/password-reset-request', { withCredentials: true });
+    return this.http.get('https://127.0.0.1:8000/api/password-reset-request', { withCredentials: true });
  }
 
-// Request password reset
-requestPasswordReset(email: string): Observable<any> {
-  const csrfToken = this.getCSRFToken(); // Fetch CSRF token from cookies
-  const headers = new HttpHeaders({
+  // Request password reset
+  requestPasswordReset(email: string): Observable<any> {
+    const csrfToken = this.getCSRFToken(); // Fetch CSRF token from cookies
+    const headers = new HttpHeaders({
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken || '', // Attach CSRF token
+    });
+
+    return this.http.post(`${this.apiUrl}/password-reset-request/`, { email }, { headers })
+        .pipe(catchError((error) => throwError(error)));
+  }
+
+  // Reset password
+  resetPassword(uid: string, token: string, newPassword: string): Observable<any> {
+    const csrfToken = this.getCSRFToken(); // Fetch CSRF token if needed
+    const headers = new HttpHeaders({
       'Content-Type': 'application/json',
-      'X-CSRFToken': csrfToken || '', // Attach CSRF token
-  });
+      'X-CSRFToken': csrfToken || '',
+    });
 
-  return this.http.post(`${this.apiUrl}/password-reset-request`, { email }, { headers })
+    return this.http.post(`${this.apiUrl}/password-reset-confirm/${uid}/${token}`, { new_password: newPassword }, { headers })
       .pipe(catchError((error) => throwError(error)));
-}
-
-// Reset password
-resetPassword(uid: string, token: string, newPassword: string): Observable<any> {
-  const csrfToken = this.getCSRFToken(); // Fetch CSRF token if needed
-  const headers = new HttpHeaders({
-    'Content-Type': 'application/json',
-    'X-CSRFToken': csrfToken || '',
-  });
-
-  return this.http.post(`${this.apiUrl}/password-reset-confirm/${uid}/${token}`, { new_password: newPassword }, { headers })
-    .pipe(catchError((error) => throwError(error)));
-}
+  }
 }
 
 

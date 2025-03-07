@@ -1,9 +1,9 @@
 <div class="login-page">
   <!-- Left Section -->
   <div class="login-left">
-    <img src="assets/images/file.png" alt="Locker Icon" />
-    <h1>Welcome To SFSS</h1>
-    <p>Just a couple of clicks and we start</p>
+    <img src="assets/images/file.png" alt="Secure File Icon" class="login-icon" />
+    <h1>Welcome to SFS</h1>
+    <p>Just a couple of clicks and we’re ready to go.</p>
   </div>
 
   <!-- Right Section -->
@@ -11,36 +11,42 @@
     <h2>Sign In</h2>
     <form (ngSubmit)="login()">
       <div class="form-group">
-        <label for="username">Email or Username:</label>
-        <input
-          type="text"
-          id="username"
-          name="username"
-          [(ngModel)]="username"
-          placeholder="Enter email or username"
-        />
+        <label for="username">Email or Username</label>
+        <div class="input-container">
+          <i class="fa fa-user input-icon"></i>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            [(ngModel)]="username"
+            placeholder="Enter your email or username"
+            required
+          />
+        </div>
       </div>
-      
 
       <div class="form-group">
-        <label for="password">Password:</label>
-        <input
-          type="password"
-          id="password"
-          name="password"
-          [(ngModel)]="password"
-          placeholder="Enter password"
-        />
+        <label for="password">Password</label>
+        <div class="input-container">
+          <i class="fa fa-lock input-icon"></i>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            [(ngModel)]="password"
+            placeholder="Enter your password"
+            required
+          />
+        </div>
       </div>
 
       <button type="submit" class="cta-button">Sign In</button>
     </form>
-    <button class="register-button" routerLink="/register">Don’t have an account? Sign Up</button>
-    <p>
-      <a routerLink="/forgot-password">Forgot Password?</a>
-    </p>
-    
-  </div>
 
- 
+    <p>
+      <a routerLink="/forgot-password" class="forgot-password">Forgot Password?</a>
+    </p>
+
+    <button class="register-button" routerLink="/register">Don’t have an account? Sign Up</button>
+  </div>
 </div>

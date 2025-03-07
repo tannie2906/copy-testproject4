@@ -144,8 +144,11 @@ export class DeleteComponent implements OnInit {
 
    
   // Permanently delete a file
-  permanentlyDeleteFile(fileId: number): void {
+  permanentlyDeleteFile(fileId: number, event: Event): void {
+    event.preventDefault(); // Prevent Safari from blocking the click
+    event.stopPropagation(); // Stop event bubbling
     const headers = new HttpHeaders().set('X-CSRFToken', this.getCookie('csrftoken'));
+    console.log("Delete button clicked for file ID:", fileId);
   
     if (confirm('Are you sure you want to permanently delete this file? This action cannot be undone.')) {
       this.folderService.permanentlyDeleteFile(fileId, headers).subscribe(
@@ -155,6 +158,7 @@ export class DeleteComponent implements OnInit {
         },
         (error: HttpErrorResponse) => {
           console.error(`Error permanently deleting file ID ${fileId}:`, error.message);
+          alert(`Error: ${error.message}`); 
         }
       );
     }

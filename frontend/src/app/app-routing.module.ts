@@ -13,10 +13,11 @@ import { AuthGuard } from './auth.guard';
 import { SearchComponent } from './search/search.component';
 import { FilePreviewComponent } from './file-preview/file-preview.component';
 //import { QrCodeComponent } from './qr-code/qr-code.component';
-import { Setup2faComponent } from '/Users/intan/testproject/frontend/src/app/setup2fa/setup2fa.component';
+import { Setup2faComponent } from './setup2fa/setup2fa.component';
 import { ForgotPasswordComponent } from './forgot-password/forgot-password.component';
 import { ResetPasswordComponent } from './reset-password/reset-password.component';
 import { FileViewComponent } from './file-view/file-view.component';
+import { LockboxComponent} from './lockbox/lockbox.component';
 
 const routes: Routes = [
   { path: '', redirectTo: '/home', pathMatch: 'full' }, // Redirect to home page
@@ -35,7 +36,8 @@ const routes: Routes = [
   { path: 'setup-2fa', component: Setup2faComponent },
   { path: 'forgot-password', component: ForgotPasswordComponent },
   { path: 'reset-password/:uid/:token', component: ResetPasswordComponent },
-  { path: 'files/view/:file_id', component: FileViewComponent }
+  { path: 'files/view/:file_id', component: FileViewComponent },
+  { path: 'lockbox', component: LockboxComponent }
 ];
 
 @NgModule({

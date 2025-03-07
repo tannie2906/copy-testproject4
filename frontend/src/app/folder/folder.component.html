@@ -5,144 +5,86 @@
     <p class="hero-description">
       Share and manage your files with top-notch security and simplicity.
     </p>
-
+    
 
      <!-- Upload Button -->
-<div class="dropdown">
-  <button class="dropdown-button" (click)="toggleUploadDropdown()">Upload</button>
-  <div class="dropdown-content" *ngIf="uploadDropdownVisible">
-    <!-- File Button -->
-    <label class="dropdown-item" for="file-upload">
-      File
-    </label>
-    <input
-      id="file-upload"
-      type="file"
-      multiple
-      (change)="onUploadFile($event)"
-      style="display: none;"
-    />
-
-    <!-- Folder Button -->
-    <label class="dropdown-item" for="folder-upload">
-      Folder
-    </label>
-    <input
-      id="folder-upload"
-      type="file"
-      webkitdirectory
-      mozdirectory
-      (change)="onUploadFolder($event)"
-      style="display: none;"
-    />
-  </div>
-</div>
-
-
-  <!-- Starred Files Button -->
-  <div class="files-header">
-    <h2 *ngIf="!showStarredFiles">Your Files</h2>
-    <h2 *ngIf="showStarredFiles">Starred Files</h2>
-    <button class="toggle-button" (click)="toggleStarredView()">
-      <span class="star-icon">
-        {{ showStarredFiles ? '⭐' : '⭐' }}
-      </span>
-    </button>
-  </div>
-
- <!-- Files Section -->
-<section class="file-section">
-  <table class="file-table">
-    <thead>
-      <tr>
-        <th (click)="sortFiles('name')" style="cursor: pointer;">
-          Name
-          <span *ngIf="sortOrder['name'] === 'asc'">▲</span>
-          <span *ngIf="sortOrder['name'] === 'desc'">▼</span>
-        </th>
-        <th (click)="sortFiles('size')" style="cursor: pointer;">
-          Size
-          <span *ngIf="sortOrder['size'] === 'asc'">▲</span>
-          <span *ngIf="sortOrder['size'] === 'desc'">▼</span>
-        </th>
-        <th>Owner</th>
-        <th (click)="sortFiles('modified')" style="cursor: pointer;">
-          Modified
-          <span *ngIf="sortOrder['modified'] === 'asc'">▲</span>
-          <span *ngIf="sortOrder['modified'] === 'desc'">▼</span>
-        </th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr *ngFor="let file of (showStarredFiles ? starredFiles : files)">
-        <!-- Name -->
-        <td>
-          <div *ngIf="file.isFolder" (click)="onOpenFolder(file.id)">
-            <i class="fa fa-folder"></i>
-            <a>{{ file.name }}</a>
-          </div>
-          <div *ngIf="!file.isFolder">
-            <a (click)="onOpenFile(file)">
-              <i class="fa fa-file"></i>
-              {{ file.name }}
-           </a>
-          </div>
-        </td>
-
-        <!-- File Size -->
-        <td>{{ file.size || '—' }}</td>
-
-        <!-- Owner Information -->
-      <td>{{ file.owner || 'Unknown' }}</td>
-
-      <!-- Modified Date -->
-      <td>{{ file.modified ? (file.modified | date: 'medium') : 'Unknown' }}</td>
-
-
-        <!-- Actions -->
-        <td class="actions">
-          <!-- Star Toggle -->
-          <button (click)="toggleStar(file)" aria-label="Toggle star">
-            <span [class]="file.isStarred ? 'starred-icon' : 'unstarred-icon'">★</span>
-          </button>
-
-          <!-- Dropdown Menu -->
-          <div class="dropdown">
-            <button class="more-button" (click)="toggleDropdown(file)">⋮</button>
-            <div
-              class="dropdown-menu"
-              [ngClass]="{ 'adjust-position': file.adjustDropdown }"
-              *ngIf="file.showDropdown"
-            >
-              <button (click)="renameFile(file.id)">Rename</button>
-              <button (click)="deleteFile(file.id)">Delete</button>
-              <button (click)="downloadFile(file.id)">Download</button>
-              <button (click)="shareFile(file.id)">Share</button>
-            </div>
-          </div>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-</section>
-
-
-  <!-- Rename Dialog -->
-  <div *ngIf="selectedFileId">
-    <input type="text" [(ngModel)]="newFileName" placeholder="Enter new name" />
-    <button (click)="renameFile(selectedFileId)">Save</button>
-    <button (click)="selectedFileId = null">Cancel</button>
-  </div>
-
-  <!-- process uploads-->
-  <div *ngIf="uploading">
-    <p>Uploading...</p>
-    <div *ngIf="progress !== null">
-      <progress [value]="progress" max="100"></progress>
-      <p>{{ progress }}%</p>
+  <div class="dropdown">
+    <button class="dropdown-button" (click)="toggleUploadDropdown()">⬆ Upload</button>
+    <div class="dropdown-content" *ngIf="uploadDropdownVisible">
+      <label class="dropdown-item" for="file-upload">📁 File</label>
+      <input
+        id="file-upload"
+        type="file"
+        multiple
+        (change)="onUploadFile($event)"
+        style="display: none;"
+      />
     </div>
   </div>
+ </section>
+
+  <!-- Toggle Starred Files -->
+  <div class="toggle-container">
+    <label class="switch">
+      <input type="checkbox" (change)="toggleStarredView()" [checked]="showStarredFiles" />
+      <span class="slider"></span>
+    </label>
+    <span class="toggle-label">{{ showStarredFiles ? 'Starred Files ⭐' : 'All Files' }}</span>
+  </div>
+
+  <!-- Files Section -->
+  <section class="file-section">
+    <table class="file-table">
+      <thead>
+        <tr>
+          <th (click)="sortFiles('name')">Name</th>
+          <th (click)="sortFiles('size')">Size</th>
+          <th>Fav</th>
+          <th (click)="sortFiles('modified')">Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let file of (showStarredFiles ? starredFiles : files)">
+          <td>
+            <i class="fa" [ngClass]="file.isFolder ? 'fa-folder' : 'fa-file'"></i>
+            <a (click)="onOpenFile(file)">{{ file.name }}</a>
+          </td>
+          <td>{{ file.size || '—' }}</td>
+          
+          <td>
+            <button class="star-button" (click)="toggleStar(file)">
+              <i class="fa" [ngClass]="file.isStarred ? 'fa-star: star' : 'fa-star-o: unstar'"></i>
+            </button>
+          </td>
+
+          <td>{{ file.modified ? (file.modified | date: 'medium') : 'Unknown' }}</td>
+
+          <td class="actions">
+
+            <!-- Actions Dropdown -->
+            <div class="dropdown">
+              <button class="more-btn" (click)="toggleDropdown(file)">⋮</button>
+              <div class="dropdown-menu" *ngIf="file.showDropdown">
+                <button (click)="moveToLockbox(file.id); closeDropdown(file)"> Move 🔒  </button>
+                <button (click)="renameFile(file.id); closeDropdown(file)">✏ Rename</button>
+                <button (click)="deleteFile(file.id); closeDropdown(file)">🗑 Delete</button>
+                <button (click)="downloadFile(file.id); closeDropdown(file)">⬇ Download</button>
+                <button (click)="shareFile(file.id); closeDropdown(file)">🔗 Share</button>
+              </div>
+            </div>
+            
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  
+</div>
+
+    
 
 
 

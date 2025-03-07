@@ -5,7 +5,7 @@ import { AppComponent } from './app.component';
 import { LoginComponent } from './login/login.component';  // Correct path
 import { ProfileComponent } from './profile/profile.component';
 import { SettingsComponent } from './settings/settings.component';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';  // Import FormsModule for ngModel
+import { ReactiveFormsModule } from '@angular/forms';  // Import FormsModule for ngModel
 import { HttpClientModule } from '@angular/common/http';
 import { RegisterComponent } from './register/register.component';
 import { HomeComponent } from './home/home.component';
@@ -32,6 +32,9 @@ import { Setup2faComponent } from './setup2fa/setup2fa.component';
 import { ForgotPasswordComponent } from './forgot-password/forgot-password.component';
 import { ResetPasswordComponent } from './reset-password/reset-password.component';
 import { FileViewComponent } from './file-view/file-view.component'; //for dialog box
+import { FormsModule } from '@angular/forms';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { LockboxComponent } from './lockbox/lockbox.component'
 //import { QRCodeModule } from 'angularx-qrcode'
 //import { QrCodeComponent } from './qr-code/qr-code.component';  
 
@@ -53,16 +56,17 @@ import { FileViewComponent } from './file-view/file-view.component'; //for dialo
     FilePreviewComponent,
     FormatBytesPipe,
     ShareDialogComponent,
-    Setup2faComponent,
     ForgotPasswordComponent,
     ResetPasswordComponent,
     FileViewComponent,
+    Setup2faComponent,
+    LockboxComponent,
     //QrCodeComponent,
     
 
   ],
   imports: [
-    FormsModule,
+    MatCheckboxModule,
     ReactiveFormsModule, 
     BrowserModule,
     AppRoutingModule,
@@ -72,13 +76,15 @@ import { FileViewComponent } from './file-view/file-view.component'; //for dialo
     MatInputModule,
     MatDialogModule,
     MatButtonModule,
+    FormsModule,
+    //Setup2faComponent,
    // QRCodeModule,
    
   ],
   providers: [
     FileService,
     FolderService,
-    AuthService,
+    //AuthService,
     { 
       provide: HTTP_INTERCEPTORS, 
       useClass: TokenInterceptor, 

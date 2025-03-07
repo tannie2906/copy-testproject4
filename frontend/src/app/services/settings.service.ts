@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from 'src/environments/environment';
-import { AuthService } from '/Users/intan/testproject/frontend/src/app/auth.service';
+import { AuthService } from '../auth.service';
 import { tap } from 'rxjs/operators';
 
 
@@ -11,7 +11,7 @@ import { tap } from 'rxjs/operators';
   providedIn: 'root', // Ensures this service can be injected globally
 })
 export class SettingsService {
-  private apiUrl = 'http://127.0.0.1:8000/api'; 
+  private apiUrl = 'https://127.0.0.1:8000/api'; 
   private baseUrl = environment.baseUrl;
 
   constructor(private http: HttpClient, private authService: AuthService) {}
@@ -72,7 +72,7 @@ export class SettingsService {
     //const headers = new HttpHeaders({
       //Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
     //});
-    return this.http.post('/api/upload-profile-picture/', file);
+    return this.http.post(`${this.baseUrl}/upload-profile-picture/`, file, { headers });
   }  
 
   changePassword(data: any) { // Accepts 'data' as input

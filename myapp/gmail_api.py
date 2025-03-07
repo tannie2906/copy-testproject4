@@ -5,6 +5,9 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from email.mime.text import MIMEText
 import base64
+from django.urls import reverse
+from django.core.mail import send_mail
+from requests import request
 
 # Scopes required for Gmail API
 SCOPES = ['https://www.googleapis.com/auth/gmail.send']
@@ -44,7 +47,7 @@ def send_reset_email(to_email, uid, token):
         service = build('gmail', 'v1', credentials=creds)
 
         # Correctly create the reset URL using the reset token
-        reset_url = f'http://localhost:4200/reset-password/{uid}/{token}/'
+        reset_url = f'https://localhost:4200/reset-password/{uid}/{token}/'
 
         # Create email content
         subject = "Password Reset Request"
@@ -97,3 +100,24 @@ def send_email_via_gmail(to_email, subject, body):
     except Exception as error:
         print(f"An error occurred while sending email: {error}")
         raise
+
+def send_share_email(shared_file):
+    from django.urls import reverse
+    from django.utils.http import urlsafe_base64_encode
+
+    link = reverse('shared_file', args=[shared_file.share_token])
+    full_link = f"https://127.0.0.1:8000{link}"  # Replace with your actual domain in production
+
+    email_body = f"""
+    {shared_file.shared_by} has shared a file with you: {shared_file.file.file_name}.
+    This link will expire in 24 hours.
+
+    Access the file here:
+    {full_link}
+    """
+    send_mail(
+        subject="File Shared with You",
+        message=email_body,
+        from_email="danyin161@gmail.com",
+        recipient_list=[shared_file.shared_with],
+    )

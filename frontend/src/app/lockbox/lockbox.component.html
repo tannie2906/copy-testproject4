@@ -1,0 +1,32 @@
+<div class="lockbox-container">
+  <h2> Lock Box</h2>
+
+  <!-- Show Image Before Password is Entered -->
+  <div *ngIf="!passwordEntered" class="lockbox-image">
+    <img src="assets/46012.png" alt="Lockbox Security">
+  </div>
+
+  <!-- Password Entry -->
+  <div *ngIf="!passwordEntered" class="password-container">
+    <p>Enter your password to unlock your files:</p>
+    <input type="password" [(ngModel)]="enteredPassword" placeholder="🔑 Enter Password">
+    <button (click)="verifyPassword()">Unlock</button>
+  </div>
+
+  <!-- File List After Unlocking -->
+  <div *ngIf="passwordEntered" class="file-list">
+    <h3>📂 Your Locked Files</h3>
+    <table>
+      <tr>
+        <th>File Name</th>
+        <th>Actions</th>
+      </tr>
+      <tr *ngFor="let file of files">
+        <td>{{ file.name }}</td>
+        <td>
+          <button class="move-btn" (click)="moveOut(file.id)">Move Back</button>
+        </td>
+      </tr>
+    </table>
+  </div>
+</div>

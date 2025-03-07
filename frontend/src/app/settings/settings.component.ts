@@ -1,7 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { AuthService } from '../auth.service';
-import { SettingsService } from '/Users/intan/testproject/frontend/src/app/services/settings.service'; 
+import { SettingsService } from '../services/settings.service'; 
 import { Router } from '@angular/router';
+import * as CryptoJS from 'crypto-js';
+import { environment } from '../../environments/environment';
+import { HttpHeaders, HttpClient  } from '@angular/common/http';
+
 
 @Component({
   selector: 'app-settings',
@@ -15,16 +19,17 @@ export class SettingsComponent implements OnInit {
   currentPassword: string = '';      // Initialize with an empty string
   newPassword: string = '';          // Initialize with an empty string
   confirmPassword: string = '';
+  lockboxPassword: string = '';
+  message: string = '';
+  selectedTab: string = 'password'; 
   
-
-
   passwordData = {
     old_password: '',
     new_password: '',
     confirm_password: ''
   };
 
-  constructor(private authService: AuthService, private settingsService: SettingsService, private router: Router) {}
+  constructor(private authService: AuthService, private settingsService: SettingsService, private router: Router, private http: HttpClient) {}
 
   ngOnInit(): void {
     const token = localStorage.getItem('token');
@@ -34,6 +39,11 @@ export class SettingsComponent implements OnInit {
         this.username = 'CurrentUsername';
       });
     }
+  }
+
+  // Function to switch between tabs
+  selectTab(tab: string): void {
+    this.selectedTab = tab;
   }
 
   changePassword(): void {
@@ -48,70 +58,45 @@ export class SettingsComponent implements OnInit {
   }
 
   // Delete account function
-deleteAccount(): void {
-  if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-    this.settingsService.deleteAccount().subscribe({
-      next: () => {
-        alert('Your account has been deleted successfully.');
-        localStorage.removeItem('token'); // Clear authentication token
-        this.router.navigate(['/login']); // Redirect to login page
-      },
-      error: (err: any) => {
-        alert(err.error.error || 'Failed to delete account.');
-      }
-    });
+  deleteAccount(): void {
+    if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+      this.settingsService.deleteAccount().subscribe({
+        next: () => {
+          alert('Your account has been deleted successfully.');
+          localStorage.removeItem('token'); // Clear authentication token
+          this.router.navigate(['/login']); // Redirect to login page
+        },
+        error: (err: any) => {
+          alert(err.error.error || 'Failed to delete account.');
+        }
+      });
+    }
   }
-}
   
-
-  //saveChanges() {
-    //if (this.newPassword !== this.confirmPassword) {
-      //alert('Passwords do not match');
-      //return;
-    //}
+  //lockbox
+  savePassword() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('❌ Authentication token missing! Please log in.');
+      return;
+    }
   
-    // Update username
-    //this.settingsService.updateUsername(this.username).subscribe(
-      //(response) => {
-      //  alert('Username updated successfully');
-      //},
-      //(error) => {
-        //console.error('Error updating username', error);
-        //alert('Failed to update username');
-      //}
-   //);
+    this.http.post(`${environment.apiUrl}/lockbox/save-password/`, 
+      { password: this.lockboxPassword }, 
+      {
+        headers: new HttpHeaders({ 'Authorization': `Token ${token}` }),
+      }).subscribe({
+        next: (response: any) => {
+          if (response.success) {
+            this.message = '✅ Password saved successfully!';
+          } else {
+            alert('❌ Failed to save password.');
+          }
+        },
+        error: () => {
+          alert('❌ Failed to save password.');
+        }
+      });
+  }  
   
-    // Update password
-    //if (this.newPassword) {
-      //this.settingsService.updatePassword(this.currentPassword, this.newPassword).subscribe(
-      //  (response) => {
-        //  alert('Password updated successfully');
-        //},
-        //(error) => {
-         // console.error('Error updating password', error);
-          //alert('Failed to update password');
-        //}
-      //);
-    //}
-  //}  
-
-  //updateSettings() {
-    //const token = localStorage.getItem('token');
-    //if (token) {
-     // this.authService.updateSettings(token, this.settings).subscribe();
-    //}
-  //}
-  //updateUsername(newUsername: string): void {
-    //this.settingsService.updateUsername(newUsername).subscribe({
-      //next: () => console.log('Username updated successfully'),
-      //error: (err) => console.error('Failed to update username', err),
-    //});
-  //}
-
-  //updateName(firstName: string, lastName: string): void {
-    //this.settingsService.updateNameDetails(firstName, lastName).subscribe({
-     // next: () => console.log('Name details updated successfully'),
-      //error: (err) => console.error('Failed to update name details', err),
-    //});
-  //}
 }

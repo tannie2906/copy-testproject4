@@ -50,8 +50,6 @@ from testproject.settings import EMAIL_HOST_USER
 from .models import DeletedFile, UploadedFile, File, SharedFile, Profile, Folder
 from .serializers import DeletedFilesSerializer, UserSerializer, UploadedFileSerializer, UserRegistrationSerializer, FileSerializer, ProfilePictureSerializer, ProfileSerializer, FolderSerializer
 from myapp.models import File, DeletedFile
-from .encryption_utils import encrypt_file
-from .encryption_utils import decrypt_file
 from django.contrib.auth import get_user_model
 from django_otp.plugins.otp_totp.models import TOTPDevice
 from django.contrib.auth.decorators import login_required
@@ -85,18 +83,26 @@ from django.core.mail import send_mail
 from myapp.gmail_api import send_reset_email 
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
-#from myapp.gmail_api import send_email
-#from myapp.email_utils import send_mail # Import Gmail API function
+from myapp.models import AuditLog
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError 
-from .models import Notification
+from .models import Lockbox
+
 from .gmail_api import send_email_via_gmail  # This imports the function from gmail_api.py
-from .utils import create_notification
+
 import json
 import logging
 import uuid
 import os
 from urllib.parse import urljoin
+from myapp.encryption_utils import decrypt_and_serve_file, encrypt_and_save_file, decrypt_file_to_temp
+from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
+from cryptography.fernet import Fernet
+from docx import Document
+from rest_framework.response import Response
+import uuid
+from datetime import timedelta
+from django.utils.timezone import now
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -111,30 +117,14 @@ def validate_file_owner(file_id, user):
     except File.DoesNotExist:
         raise ValidationError("File not found.")
 
-# File & folder Upload
+# ViewSet for files
 class FileUploadView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         try:
-            uploaded_files = request.FILES.getlist('files')
-            folder_paths = request.data.getlist('folders', [])
+            uploaded_files = request.FILES.getlist('files')  # Only handle file uploads
             user_id = request.user.id
-
-            # Handle folder creation
-            parent_folder = None
-            for folder_path in folder_paths:
-                folder_hierarchy = folder_path.split('/')
-                for folder_name in folder_hierarchy:
-                    parent_folder, _ = Folder.objects.get_or_create(
-                        name=folder_name,
-                        parent_folder=parent_folder,
-                        user_id=user_id
-                    )
-
-            # Handle file uploads
-            if not uploaded_files and folder_paths:
-                return Response({"message": "Folders uploaded successfully!"}, status=201)
 
             # Allowed file extensions and max size
             allowed_extensions = {'jpg', 'jpeg', 'png', 'pdf', 'txt', 'docx', 'xlsx', 'csv', 'zip'}
@@ -149,47 +139,28 @@ class FileUploadView(APIView):
                 if uploaded_file.size > max_size:
                     return Response({"error": f"File size exceeds 20MB: {uploaded_file.name}"}, status=400)
 
-                relative_path = request.data.get(f"relative_path_{uploaded_file.name}", uploaded_file.name)
-                folder_structure = os.path.dirname(relative_path)
-
-                # Create folder structure if necessary
-                parent_folder = None
-                if folder_structure:
-                    for folder_name in folder_structure.split('/'):
-                        parent_folder, _ = Folder.objects.get_or_create(
-                            name=folder_name,
-                            parent_folder=parent_folder,
-                            user_id=user_id
-                        )
-
-                # Check if the file already exists
-                existing_file = File.objects.filter(
-                    file=f"uploads/{relative_path}",
-                    user_id=user_id,
-                    folder=parent_folder
-                ).first()
-
-                if existing_file:
-                    continue  # Skip already existing files to prevent duplication
-
                 # Save the uploaded file
                 base_upload_dir = os.path.join(settings.MEDIA_ROOT, 'uploads')
-                target_folder = os.path.join(base_upload_dir, os.path.dirname(relative_path))
-                os.makedirs(target_folder, exist_ok=True)
+                os.makedirs(base_upload_dir, exist_ok=True)
 
-                safe_file_name = f"{slugify(os.path.basename(relative_path))}.{file_extension}"
-                file_path = os.path.join(target_folder, safe_file_name)
-                with open(file_path, 'wb+') as destination:
-                    for chunk in uploaded_file.chunks():
-                        destination.write(chunk)
+                safe_file_name = f"{slugify(uploaded_file.name)}.{file_extension}"
+                file_path = os.path.join(base_upload_dir, safe_file_name)
 
-                # Save file metadata
+                # Handle encryption based on file type
+                if isinstance(uploaded_file, InMemoryUploadedFile):
+                    uploaded_file.seek(0)  # Ensure reading from the start
+                    encrypt_and_save_file(uploaded_file, file_path)
+
+                elif isinstance(uploaded_file, TemporaryUploadedFile):
+                    with open(uploaded_file.temporary_file_path(), 'rb') as temp_file:
+                        encrypt_and_save_file(temp_file, file_path)
+
+                # Save file metadata (No folder association)
                 file_instance = File.objects.create(
-                    file=f"uploads/{relative_path}",
+                    file=f"uploads/{safe_file_name}",
                     file_name=uploaded_file.name,
                     size=uploaded_file.size,
-                    user_id=user_id,
-                    folder=parent_folder
+                    user_id=user_id
                 )
 
                 uploaded_file_data.append({
@@ -198,7 +169,7 @@ class FileUploadView(APIView):
                 })
 
             return Response({
-                "message": "Files and folders uploaded successfully!",
+                "message": "Files uploaded successfully!",
                 "files": uploaded_file_data
             }, status=201)
 
@@ -206,97 +177,25 @@ class FileUploadView(APIView):
             print("Upload Error:", str(e))
             return Response({"error": str(e)}, status=500)
 
-# ViewSet for files
-class FileViewSet(viewsets.ModelViewSet):
-    serializer_class = FileSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        return File.objects.filter(user=self.request.user, is_deleted=False)
-
-# List user-uploaded files
-class FileListView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        files = File.objects.filter(user_id=request.user.id)
-        serializer = FileSerializer(files, many=True)
-        return Response(serializer.data)
-
-class FolderListView(APIView):
-    def get(self, request):
-        def serialize_folder(folder):
-            return {
-                "id": folder.id,
-                "name": folder.name,
-                "children": [
-                    serialize_folder(child) for child in Folder.objects.filter(parent_folder=folder)
-                ]
-            }
-        
-        folders = Folder.objects.filter(parent_folder=None)  # Top-level folders
-        files = File.objects.all()
-        
-        return Response({
-            "folders": [serialize_folder(folder) for folder in folders],
-            "files": [{"id": f.id, "name": f.name, "folder_id": f.folder.id, "size": f.size} for f in files],
-        })
-
-#create folder    
-@method_decorator(csrf_exempt, name='dispatch')
-class FolderView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request):
-        print("Request Data:", request.data)  # Debugging
-        serializer = FolderSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(user=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        print("Validation Errors:", serializer.errors)  # Debugging
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-class FolderViewSet(viewsets.ModelViewSet):
-    queryset = Folder.objects.all()
-    serializer_class = FolderSerializer
-
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-class FolderContentView(APIView):
-    def get(self, request, folder_id, *args, **kwargs):
-        try:
-            folder = Folder.objects.get(id=folder_id)
-            files = folder.files.all()
-            subfolders = folder.subfolders.all()
-
-            data = {
-                'files': [{'id': file.id, 'name': file.name, 'type': 'file'} for file in files],
-                'subfolders': [{'id': subfolder.id, 'name': subfolder.name, 'type': 'folder'} for subfolder in subfolders],
-            }
-            return Response(data)
-        except Folder.DoesNotExist:
-            return Response({'error': 'Folder not found'}, status=404)
-
+ 
+ # ViewSet for files
 class FolderListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        # Fetch folders and files
+        # Fetch all folders
         folders = Folder.objects.filter(user=request.user)
-        files = File.objects.filter(user_id=request.user.id, is_deleted=False)
+        
+        # Fetch only unlocked files
+        files = File.objects.filter(user_id=request.user.id, is_deleted=False, is_locked=False)
 
+        # Serialize the data
         folder_serializer = FolderSerializer(folders, many=True)
         file_serializer = FileSerializer(files, many=True)
 
-        # Combine both folders and files in one response
         return Response({
             'folders': folder_serializer.data,
-            'files': file_serializer.data
+            'files': file_serializer.data  # Now includes only unlocked files
         })
 
 # User Authentication and login
@@ -323,7 +222,7 @@ def password_reset_request(request):
         user = User.objects.get(email=email)  # Find the user by email
         token = default_token_generator.make_token(user)  # Generate a reset token
         uid = urlsafe_base64_encode(force_bytes(user.pk))  # Properly encode user ID
-        reset_url = f'http://localhost:4200/reset-password/{uid}/{token}/'  # Construct the reset URL
+        reset_url = f'https://localhost:4200/reset-password/{uid}/{token}/'  # Construct the reset URL
 
         # Send the email with the reset link
         send_reset_email(user.email, uid, token)
@@ -427,36 +326,41 @@ class RenameFileView(APIView):
             if request.content_type != 'application/json':
                 return Response({"error": "Content-Type must be application/json."}, status=400)
 
-            # Validate name field
+            # Get new name from request
             new_name = request.data.get('name', '').strip()
-            if not new_name:  # Empty name check
+            if not new_name:
                 return Response({"error": "File name cannot be empty."}, status=400)
-
-            # Validate file name format
-            if not re.match(r'^[a-zA-Z0-9_\- ]+$', new_name):
-                return Response({"error": "Invalid file name format."}, status=400)
 
             # Retrieve file instance
             file_instance = get_object_or_404(File, id=file_id, user_id=request.user.id)
-            file_path = os.path.join(settings.MEDIA_ROOT, 'uploads', os.path.basename(file_instance.file.name))
+            file_path = os.path.join(settings.MEDIA_ROOT, file_instance.file.name)
 
-            # Check if the file exists
+            # Check if file exists
             if not os.path.exists(file_path):
                 return Response({"error": "File not found."}, status=404)
 
-            # Generate new file path
-            file_extension = os.path.splitext(file_instance.file.name)[1]
-            new_file_name = slugify(new_name) + file_extension
+            # Extract the original file extension
+            original_ext = os.path.splitext(file_instance.file.name)[1]
+
+            # Split the new name into base name and extension
+            base_name, new_ext = os.path.splitext(new_name)
+
+            # If the user doesn't provide an extension, use the original one
+            if not new_ext:
+                new_ext = original_ext
+
+            # Generate the final new file name
+            new_file_name = f"{slugify(base_name)}{new_ext}"  # Combine slugified base name with extension
             new_file_path = os.path.join(settings.MEDIA_ROOT, 'uploads', new_file_name)
 
-            # Check duplicate name
+            # Check for duplicate file names
             if os.path.exists(new_file_path):
                 return Response({"error": "File with this name already exists."}, status=400)
 
-            # Rename the file physically and in the database
+            # Rename the file
             os.rename(file_path, new_file_path)
-            file_instance.file_name = new_name
-            file_instance.file = f"uploads/{new_file_name}"
+            file_instance.file_name = base_name  # Save base name (without extension) in the database
+            file_instance.file = f"uploads/{new_file_name}"  # Update file path with extension
             file_instance.save()
 
             return Response({"message": "File renamed successfully."}, status=200)
@@ -470,22 +374,34 @@ class DownloadFileView(APIView):
 
     def get(self, request, file_id):
         try:
+            # Retrieve the file, ensuring it's the user's file
             file = get_object_or_404(File, id=file_id, user_id=request.user.id)
+            encrypted_file_path = file.file.path
 
-            # Check the actual file path
-            file_path = file.file.path
-            if not os.path.exists(file_path):
+            if not os.path.exists(encrypted_file_path):
                 return Response({"error": "File not found."}, status=404)
 
-            # Decrypt the file
-           # decrypt_file(file_path)
+            # Decrypt file to a temporary path
+            temp_file_path = os.path.join("/tmp", f"decrypted_{file.file_name}")
+            decrypted_path = decrypt_file_to_temp(encrypted_file_path, temp_file_path)
 
-            # Stream file response
-            response = FileResponse(open(file_path, 'rb'))
-            response['Content-Disposition'] = f'attachment; filename="{file.file_name}"'
+            # Log the download
+            AuditLog.objects.create(
+                user=request.user,
+                action="download",
+                file=file,
+                timestamp=now()
+            )
 
-            # Re-encrypt after sending
-           # encrypt_file(file_path)
+            # Serve the decrypted file as an attachment
+            response = FileResponse(open(decrypted_path, "rb"), as_attachment=True, filename=file.file_name)
+
+            # Delete temporary file after download
+            import threading
+            def cleanup():
+                os.remove(decrypted_path)
+
+            threading.Timer(10, cleanup).start()  # Delete after 10 seconds
 
             return response
 
@@ -788,51 +704,45 @@ def toggle_star(request, id):
 class FileView(APIView):
     def get(self, request, file_id):
         try:
-            # Retrieve the file from the database
-            file = File.objects.get(id=file_id)
+            file = get_object_or_404(File, id=file_id)
+            encrypted_file_path = file.file.path
 
-            # Construct the file path
-            file_path = os.path.join(settings.MEDIA_ROOT, file.file.name)
-
-            # Check if the file exists
-            if not os.path.exists(file_path):
+            if not os.path.exists(encrypted_file_path):
                 return Response({'error': 'File not found'}, status=status.HTTP_404_NOT_FOUND)
 
-            # Prepare the file URL
-            file_url = request.build_absolute_uri(settings.MEDIA_URL + file.file.name)
+            # Decrypt file temporarily
+            decrypted_file_path = os.path.join(settings.MEDIA_ROOT, "temp", f"preview_{file.file_name}")
+            decrypt_file_to_temp(encrypted_file_path, decrypted_file_path)
 
-            # Determine the file type
+            # Determine file type
             file_extension = os.path.splitext(file.file_name)[1].lower()
-            file_type = None
-            if file_extension in ['.txt']:
-                file_type = 'text'
-            elif file_extension in ['.jpg', '.jpeg', '.png', '.gif']:
-                file_type = 'image'
-            elif file_extension in ['.pdf']:
-                file_type = 'pdf'
-            else:
-                file_type = 'other'
 
-            # For text files, return content
-            if file_type == 'text':
-                with open(file_path, 'r') as f:
+            if file_extension == '.txt':
+                with open(decrypted_file_path, 'r', encoding='utf-8') as f:
                     content = f.read()
-                return Response({
-                    'name': file.file_name,
-                    'content': content,
-                    'type': file_type,
-                    'url': file_url
-                })
+                os.remove(decrypted_file_path)
+                return Response({'name': file.file_name, 'content': content, 'type': 'text'})
 
-            # For other files, return the URL and type
-            return Response({
-                'name': file.file_name,
-                'type': file_type,
-                'url': file_url
-            })
+            elif file_extension == '.pdf':
+                preview_url = request.build_absolute_uri(f"{settings.MEDIA_URL}temp/preview_{file.file_name}")
+                return Response({'name': file.file_name, 'type': 'pdf', 'url': preview_url})
 
-        except File.DoesNotExist:
-            return Response({'error': 'File not found'}, status=status.HTTP_404_NOT_FOUND)
+            elif file_extension == '.docx':
+                document = Document(decrypted_file_path)
+                content = "\n\n".join([p.text for p in document.paragraphs])
+                tables = [[[cell.text for cell in row.cells] for row in table.rows] for table in document.tables]
+                os.remove(decrypted_file_path)
+                return Response({'name': file.file_name, 'type': 'docx', 'content': content, 'tables': tables})
+
+            elif file_extension in ['.jpg', '.jpeg', '.png', '.gif']:
+                preview_url = request.build_absolute_uri(f"{settings.MEDIA_URL}temp/preview_{file.file_name}")
+                return Response({'name': file.file_name, 'type': 'image', 'url': preview_url})
+
+            os.remove(decrypted_file_path)
+            return Response({'error': 'Preview not supported for this file type'}, status=400)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 def serve_file(request, file_id):
     file = File.objects.get(id=file_id)  # Retrieve the file object from the DB
@@ -951,51 +861,6 @@ class FileSearchView(generics.ListAPIView):
             ).order_by('-created_at')  # Explicit ordering by latest created_at
         return File.objects.none()
 
-#file preview
-class FileMetadataView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, file_id):
-        try:
-            file_instance = get_object_or_404(File, id=file_id, user_id=request.user.id)
-            file_path = file_instance.file.path
-            file_size = os.path.getsize(file_path)
-            file_type = mimetypes.guess_type(file_path)[0] or 'application/octet-stream'
-
-            return Response({
-                "file_name": file_instance.file_name,
-                "url": request.build_absolute_uri(file_instance.file.url),
-                "type": file_type,
-                "size": file_size,
-            }, status=200)
-        except Exception as e:
-            return Response({"error": str(e)}, status=500)
-
-class FilePreviewView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, file_id):
-        try:
-            file_instance = get_object_or_404(File, id=file_id, user_id=request.user.id)
-            file_path = file_instance.file.path
-
-            # Decrypt or Copy the file
-            decrypted_file_path = file_path + ".decrypted"
-            decrypt_file(file_path, decrypted_file_path)
-
-            # Serve the decrypted file
-            response = FileResponse(open(decrypted_file_path, 'rb'))
-            response['Content-Type'] = mimetypes.guess_type(decrypted_file_path)[0]
-            response['Content-Disposition'] = f'inline; filename="{file_instance.file_name}"'
-
-            # Cleanup
-            os.remove(decrypted_file_path)
-            return response
-
-        except Exception as e:
-            logger.error(f"File preview error: {str(e)}", exc_info=True)
-            return Response({"error": str(e)}, status=500)
-
 #change password
 class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
@@ -1047,7 +912,6 @@ class DeleteAccountView(APIView):
         user.delete()
 
         return Response({"message": "Account deleted successfully"}, status=status.HTTP_200_OK)
-
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -1124,7 +988,6 @@ def setup_2fa(request):
         "secret": base32_secret  # Optional for manual setup
     })
 
-
 class Enable2FAView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1156,92 +1019,250 @@ def send_test_email(request):
         body = 'This is a test email sent via the Gmail API.'
 
         # Send the email
-        result = send_email(to_email, subject, body)
+        result = send_mail(to_email, subject, body)
 
         return JsonResponse({'status': 'success', 'message': result})
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)})
 
-
-   
+#share the file
 class ShareFileView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, file_id):
         logger.info("Received request to share file")
-        logger.info(f"Request data: {request.data}")
-
-        # Retrieve email from request
         email = request.data.get('email')
+        password = request.data.get('password')  # Get optional password
+        allow_download = request.data.get('allow_download', False ) 
+        one_time_view = request.data.get('one_time_view', False) 
+
+        logger.info(f"Sharing file with one_time_view: {one_time_view}")
+
         if not email:
-            logger.error("Email is missing in the request data")
             return Response({"error": "Email is required."}, status=400)
 
-        # Validate the email
+        # Validate email
         try:
             validate_email(email)
         except ValidationError:
-            logger.error("Invalid email address provided")
             return Response({"error": "Invalid email address."}, status=400)
 
         # Check if file exists and belongs to the current user
         file_instance = get_object_or_404(File, id=file_id, user_id=request.user.id)
-        logger.info(f"File instance retrieved: {file_instance}")
 
-        # Create a shared file entry
-        try:
-            shared_file = SharedFile.objects.create(
-                file=file_instance,
-                shared_with=email,
-                shared_by=request.user
-            )
-            # Create a notification for the user the file is shared with
-            create_notification(file_instance.user, f"{request.user.username} has shared a file with you: {file_instance.file_name}")
+        # Generate a secure, expiring share link
+        share_token = str(uuid.uuid4())
+        expiry_time = now() + timedelta(hours=24)  # Link expires in 24 hours
+        
+        shared_file = SharedFile.objects.create(
+            file=file_instance,
+            shared_with=email,
+            shared_by=request.user,
+            share_token=share_token,
+            expiry_time=expiry_time,
+            allow_download=allow_download,
+            one_time_view=one_time_view
+        )
 
-        except Exception as e:
-            logger.error(f"Error creating SharedFile entry: {e}")
-            return Response({"error": "Failed to share the file."}, status=500)
+         # 🔹 Set password if provided
+        if password:
+            shared_file.set_password(password)
+        shared_file.save()
 
-        # Send email notification via Gmail API
+        # Notify the recipient
         try:
             subject = "File Shared with You"
-            body = f"{request.user.username} has shared a file with you: {file_instance.file_name}"
-            send_email_via_gmail(email, subject, body)  # Use the Gmail API to send the email
+            body = (
+                f"{request.user.username} has shared a file with you: {file_instance.file_name}. "
+                f"This link will expire in 24 hours.\n\n"
+                f"Access the file here: https://127.0.0.1:8000/api/shared-files/{share_token}/"
+            )
+            #if password:
+             #   body += f" Password: {password}\n"
+
+            send_email_via_gmail(email, subject, body)
         except Exception as e:
             logger.error(f"Error sending email: {e}")
             return Response({"error": "Failed to send email notification."}, status=500)
 
-        # Return success response with a link to the shared file
         return Response({
             "message": "File shared successfully!",
-            "share_link": f"http://127.0.0.1:8000/api/shared-files/{shared_file.id}/"
+            "share_link": f"https://127.0.0.1:8000/api/shared-files/{share_token}/"
         }, status=200)
-    
-class NotificationListView(APIView):
-    permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')
-        notifications_data = [
-            {
-                'id': notification.id,
-                'message': notification.message,
-                'is_read': notification.is_read,
-                'created_at': notification.created_at
-            }
-            for notification in notifications
-        ]
-        return Response({"notifications": notifications_data})
+#expired link    
+class RetrieveSharedFileView(APIView):
+    def get(self, request, share_token):
+        shared_file = get_object_or_404(SharedFile, share_token=share_token)
 
-#this for mark as read once they seem them 
-class MarkNotificationReadView(APIView):
-    permission_classes = [IsAuthenticated]
+        if shared_file.is_expired():
+            return Response({"error": "This link has expired."}, status=400)
+        
+        # Get the entered password from the request
+        entered_password = request.GET.get('password', '')
 
-    def post(self, request, notification_id):
+        if shared_file.password_hash and not shared_file.check_password(entered_password):
+            return Response({"error": "Incorrect password."}, status=403)
+
+        # 🔹 If the file was shared with a password, validate it
+        if shared_file.password_hash:
+            if not entered_password:
+                return Response({"error": "Password is required."}, status=401)
+
+        # 🔹 Check if it's a one-time view and has been accessed before
+        if shared_file.one_time_view and shared_file.has_been_viewed:
+            return Response({"error": "This file has already been viewed and cannot be accessed again."}, status=403)
+
+        # 🔹 If it's a one-time view, mark it as viewed
+        if shared_file.one_time_view:
+            shared_file.has_been_viewed = True
+            shared_file.save(update_fields=['has_been_viewed']) 
+
+        #Check if user can download the file
+        can_download = shared_file.can_download
+
+        return Response({
+            "message": "File link is valid.",
+            "file_name": shared_file.file.file_name,
+            "file_url": request.build_absolute_uri(shared_file.file.file.url),
+            "allow_download": can_download
+        })
+
+#view file share from link
+class SharedFileView(View):
+    def get(self, request, share_token):
+        temp_file_path = None
+
         try:
-            notification = Notification.objects.get(id=notification_id, user=request.user)
-            notification.is_read = True
-            notification.save()
-            return Response({"message": "Notification marked as read."}, status=200)
-        except Notification.DoesNotExist:
-            return Response({"error": "Notification not found."}, status=404)
+            shared_file = SharedFile.objects.get(share_token=share_token)
+            
+            # Check if the link has expired
+            if shared_file.is_expired():
+                return HttpResponse("This link has expired.", status=410)  
+            
+            # 🔹 Enforce one-time view
+            if shared_file.one_time_view and shared_file.has_been_viewed:
+                return HttpResponse("This file has already been viewed and cannot be accessed again.", status=403)
+            
+            # Handle password protection
+            password = request.GET.get("password", None)
+            if shared_file.password_hash and not shared_file.check_password(password):
+                return render(request, "enter_password.html", {
+                    "share_token": share_token,
+                    "error": "Incorrect password. Please try again."
+                })
+            
+            # Get the file path
+            file_path = shared_file.file.file.path  # Full file path
+            file_name = shared_file.file.file_name  # File name from the database
+            
+            # Check if the file exists
+            if not os.path.exists(file_path):
+                return HttpResponse("File not found.", status=404)
+            
+            # 🔹 Decrypt file to a temporary location
+            temp_file_path = f"/tmp/decrypted_{file_name}"
+            decrypt_file_to_temp(file_path, temp_file_path)
+            
+            # 🔹 Determine MIME type
+            mime_type, _ = mimetypes.guess_type(file_name)
+            if not mime_type:
+                mime_type = "application/octet-stream"  # Default type if unknown
+            
+             # 🔹 Serve the decrypted file
+            with open(temp_file_path, 'rb') as temp_file:
+                response = HttpResponse(temp_file.read(), content_type=mime_type)
+                response['Content-Disposition'] = f'inline; filename="{file_name}"'
+
+                # 🔹 Mark file as viewed if one-time view is enabled
+                if shared_file.one_time_view:
+                    shared_file.has_been_viewed = True
+                    shared_file.save(update_fields=['has_been_viewed'])  # ✅ Save
+
+                return response
+            
+        except SharedFile.DoesNotExist:
+            return HttpResponse("Invalid or expired link.", status=400)
+
+        except Exception as e:
+            return HttpResponse(f"Error serving file: {str(e)}", status=500)
+
+        finally:
+            if temp_file_path and os.path.exists(temp_file_path):  # ✅ Ensure file exists
+                os.remove(temp_file_path)
+            
+def extract_text_from_docx(docx_file_path):
+    doc = Document(docx_file_path)
+    full_text = []
+    for para in doc.paragraphs:
+        full_text.append(para.text)
+    return '\n'.join(full_text)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def move_to_lockbox(request, file_id):
+    try:
+        file = File.objects.get(id=file_id, user=request.user)
+        if file.is_locked:
+            return Response({'error': 'File is already in Lock Box!'}, status=400)
+        
+        file.is_locked = True  # Move to Lock Box
+        file.save()
+        
+        return Response({'message': 'File moved to Lock Box successfully!'})
+    except File.DoesNotExist:
+        return Response({'error': 'File not found!'}, status=404)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def move_out_of_lockbox(request, file_id):
+    try:
+        file = File.objects.get(id=file_id, user=request.user)
+        file.is_locked = False
+        file.save()
+        return Response({'message': 'File moved out of Lock Box successfully!'})
+    except File.DoesNotExist:
+        return Response({'error': 'File not found!'}, status=404)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_locked_files(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Unauthorized access! Please log in.'}, status=401)
+
+    files = File.objects.filter(user=request.user, is_locked=True)
+    return Response([{'id': f.id, 'name': f.file_name, 'created_at': f.created_at} for f in files])
+
+@csrf_exempt  # ✅ To avoid CSRF issues
+@api_view(['POST'])
+@permission_classes([IsAuthenticated]) 
+def verify_lockbox_password(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        enteredPassword = data.get('password')
+        user = request.user
+
+        try:
+            lockbox = Lockbox.objects.get(user=user)
+            if lockbox.check_password(enteredPassword):  # ✅ Make sure `check_password` is implemented
+                return JsonResponse({'success': True})
+            else:
+                return JsonResponse({'success': False, 'error': 'Incorrect password'}, status=400)
+        except Lockbox.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Lockbox not found'}, status=404)
+    
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])  
+def save_lockbox_password(request):
+    data = json.loads(request.body)
+    new_password = data.get('password')
+    user = request.user
+
+    if not new_password:
+        return JsonResponse({'success': False, 'error': 'Password is required'}, status=400)
+
+    lockbox, created = Lockbox.objects.get_or_create(user=user)
+    lockbox.set_password(new_password)  # ✅ Hash & save password
+
+    return JsonResponse({'success': True, 'message': 'Password saved successfully'})

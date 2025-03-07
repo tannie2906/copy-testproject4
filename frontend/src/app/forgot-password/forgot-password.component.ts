@@ -12,16 +12,13 @@ export class ForgotPasswordComponent {
 
   constructor(private authService: AuthService) {}
 
-  submit(): void {
+  submit(): void { // Only triggered on button click
     this.authService.requestPasswordReset(this.email).subscribe(
-      (response) => {
-        this.message = 'Password reset email sent successfully.';
-      },
-      (error) => {
-        this.message = 'Error sending password reset email.';
-      }
+      (response) => { this.message = 'Password reset email sent successfully.'; },
+      (error) => { this.message = 'Error sending password reset email.'; }
     );
   }
+  
 
   requestPasswordReset() {
     this.authService.requestPasswordReset(this.email).subscribe(
