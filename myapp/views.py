@@ -1104,28 +1104,32 @@ class RetrieveSharedFileView(APIView):
         if shared_file.password_hash and not shared_file.check_password(entered_password):
             return Response({"error": "Incorrect password."}, status=403)
 
-        # 🔹 If the file was shared with a password, validate it
+        #If the file was shared with a password, validate it
         if shared_file.password_hash:
             if not entered_password:
                 return Response({"error": "Password is required."}, status=401)
 
-        # 🔹 Check if it's a one-time view and has been accessed before
+        #Check if it's a one-time view and has been accessed before
         if shared_file.one_time_view and shared_file.has_been_viewed:
             return Response({"error": "This file has already been viewed and cannot be accessed again."}, status=403)
 
-        # 🔹 If it's a one-time view, mark it as viewed
+        #If it's a one-time view, mark it as viewed
         if shared_file.one_time_view:
             shared_file.has_been_viewed = True
             shared_file.save(update_fields=['has_been_viewed']) 
 
         #Check if user can download the file
-        can_download = shared_file.can_download
+        if not shared_file.allow_download:
+            return Response({"error": "Downloading is not allowed for this file."}, status=403)
+
+        file_path = shared_file.file.file.path
+        file_name = shared_file.file.file_name
 
         return Response({
             "message": "File link is valid.",
             "file_name": shared_file.file.file_name,
             "file_url": request.build_absolute_uri(shared_file.file.file.url),
-            "allow_download": can_download
+            "allow_download": shared_file.allow_download
         })
 
 #view file share from link
@@ -1173,6 +1177,12 @@ class SharedFileView(View):
             with open(temp_file_path, 'rb') as temp_file:
                 response = HttpResponse(temp_file.read(), content_type=mime_type)
                 response['Content-Disposition'] = f'inline; filename="{file_name}"'
+
+                 # Check if download is allowed
+                if shared_file.allow_download:
+                    response['Content-Disposition'] = f'attachment; filename="{file_name}"'  # Force download
+                else:
+                    response['Content-Disposition'] = f'inline; filename="{file_name}"'  # Open in browser
 
                 # 🔹 Mark file as viewed if one-time view is enabled
                 if shared_file.one_time_view:

@@ -70,7 +70,7 @@
                 <button (click)="moveToLockbox(file.id); closeDropdown(file)"> Move 🔒  </button>
                 <button (click)="renameFile(file.id); closeDropdown(file)">✏ Rename</button>
                 <button (click)="deleteFile(file.id); closeDropdown(file)">🗑 Delete</button>
-                <button (click)="downloadFile(file.id); closeDropdown(file)">⬇ Download</button>
+                <button (click)="onDownload(file, $event); closeDropdown(file)">⬇ Download</button>
                 <button (click)="shareFile(file.id); closeDropdown(file)">🔗 Share</button>
               </div>
             </div>

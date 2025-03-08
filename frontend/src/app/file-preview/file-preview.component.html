@@ -1,4 +1,4 @@
-<!--preview file sharing -->
+<!-- Preview File Sharing -->
 <div *ngIf="loading" class="loading-spinner">Loading...</div>
 
 <div *ngIf="!loading" class="preview-container">
@@ -16,14 +16,16 @@
     <iframe [src]="sanitizePdfUrl(previewUrl)" class="preview-frame"></iframe>
   </div>
 
+  <!-- Secure Preview for PDF -->
   <div class="preview-container" oncontextmenu="return false;">
     <iframe [src]="sanitizePdfUrl(previewUrl)" class="file-preview"></iframe>
-</div>
+  </div>
 
-<div class="preview-container">
-  <div class="watermark">{{ getUserEmail() }}</div>
-  <iframe [src]="sanitizePdfUrl(previewUrl)" class="file-preview"></iframe>
-</div>
+  <!-- Watermark for PDFs -->
+  <div class="preview-container">
+    <div class="watermark">{{ getUserEmail() }}</div>
+    <iframe [src]="sanitizePdfUrl(previewUrl)" class="file-preview"></iframe>
+  </div>
 
   <!-- DOCX Preview -->
   <div *ngIf="fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'">
@@ -37,21 +39,15 @@
     <p>Preview not available for this file type.</p>
   </div>
 
-<!-- Download Button -->
-<a *ngIf="canDownload" [href]="getPreviewUrl()" download class="download-btn">Download File</a>
+  <!-- 🔹 Universal Download Button -->
+  <a *ngIf="canDownload" [href]="getDownloadUrl()" download="{{ fileName }}" class="download-btn">
+    Download File
+  </a>
 
+  <p *ngIf="!canDownload" class="warning-text">
+    Download is disabled for this file.
+  </p>
 
-<p *ngIf="!canDownload" class="warning-text">
-  Download is disabled for this file.
-</p>
-
- <!-- Conditional Download Button -->
- <a *ngIf="canDownload" [href]="previewUrl + '?token=' + getAuthToken()" download class="download-btn">
-  Download File
-</a>
-<p *ngIf="!canDownload" class="warning-text">
-  Download is disabled for this file.
-</p>
-
-<div class="watermark">{{ getUserEmail() }}</div>
-
+  <!-- Watermark -->
+  <div class="watermark">{{ getUserEmail() }}</div>
+</div>

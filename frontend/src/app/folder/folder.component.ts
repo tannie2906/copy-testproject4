@@ -177,19 +177,33 @@ export class FolderComponent implements OnInit {
       return;
     }
   
+    // Ensure file.id is correctly passed
     if (!file.id) {
-      console.error('File ID is missing:', file);
+      console.error('File ID is missing in the search results:', file);
       alert('Unable to download the file. File ID is missing.');
       return;
     }
   
     this.fileService.downloadFile(file.id, token).subscribe({
       next: (blob) => {
-        console.log('File downloaded successfully:', file.file_name);
-        this.fileService.saveBlobToFile(blob, file.file_name);
+        // Create a URL for the downloaded file
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+  
+        // Use the file_name if provided
+        a.download = file.file_name || `file-${file.id}`;
+        a.click();
+  
+        // Clean up the URL object
+        window.URL.revokeObjectURL(downloadUrl);
       },
       error: (error) => {
         console.error('Error downloading file:', error);
+  
+        // Debugging
+        console.error('File object causing error:', file);
+  
         alert('Failed to download the file. Please try again.');
       },
     });
@@ -451,22 +465,7 @@ export class FolderComponent implements OnInit {
     this.fetchFilesAndFolders();
   }
 
-  async downloadFile(fileId: number) {
-    const token = this.authService.getToken();
-    const response = await axios.get(
-      `https://127.0.0.1:8000/api/download/${fileId}/`,
-      {
-        headers: { Authorization: `Token ${token}` },
-        responseType: 'blob', // Download as binary data
-      }
-    );
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'file'); // Dynamic name can be set here
-    document.body.appendChild(link);
-    link.click();
-  }
+ 
 
   //file review
   formatBytes(bytes: number, decimals = 2): string {
