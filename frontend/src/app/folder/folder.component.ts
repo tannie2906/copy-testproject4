@@ -10,6 +10,9 @@ import { UploadService } from  '../services/upload.service';
 import { File as CustomFile } from '../services/file.service';
 import { ShareDialogComponent } from '../share-dialog/share-dialog.component';
 import { MatDialog } from '@angular/material/dialog';
+import { environment } from 'src/environments/environment';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from '../custom-snackbar/custom-snackbar.component';
 
 @Component({
   selector: 'app-folder',
@@ -63,6 +66,7 @@ export class FolderComponent implements OnInit {
     private router: Router,
     private uploadService: UploadService,
     private dialog: MatDialog,
+    private snackBar: MatSnackBar
   ) {}
 
   ngOnInit(): void {
@@ -117,28 +121,34 @@ export class FolderComponent implements OnInit {
   // Sort files by column
   sortFiles(column: string): void {
     this.sortOrder[column] = this.sortOrder[column] === 'asc' ? 'desc' : 'asc';
-
-    switch (column) {
-      case 'name':
-        this.files.sort((a, b) =>
-          this.sortOrder['name'] === 'asc'
-            ? a.name.localeCompare(b.name)
-            : b.name.localeCompare(a.name)
-        );
-        break;
-      case 'size':
-        this.files.sort((a, b) =>
-          this.sortOrder['size'] === 'asc' ? a.size - b.size : b.size - a.size
-        );
-        break;
-      case 'modified':
-        this.files.sort((a, b) =>
-          this.sortOrder['modified'] === 'asc'
-            ? new Date(a.created_at).getTime() - new Date(b.upload_date).getTime()
-            : new Date(b.upload_date).getTime() - new Date(a.created_at).getTime()
-        );
-        break;
-    }
+  
+    this.files.sort((a, b) => {
+      let valueA: any;
+      let valueB: any;
+  
+      switch (column) {
+        case 'name':
+          valueA = a.name.toLowerCase();
+          valueB = b.name.toLowerCase();
+          return this.sortOrder[column] === 'asc' 
+            ? valueA.localeCompare(valueB) 
+            : valueB.localeCompare(valueA);
+  
+        case 'size':
+          // Convert file sizes to numbers (assumes sizes are stored in bytes)
+          valueA = typeof a.size === 'string' ? parseFloat(a.size) : a.size;
+          valueB = typeof b.size === 'string' ? parseFloat(b.size) : b.size;
+          return this.sortOrder[column] === 'asc' ? valueA - valueB : valueB - valueA;
+  
+        case 'modified':
+          valueA = new Date(a.modified).getTime();
+          valueB = new Date(b.modified).getTime();
+          return this.sortOrder[column] === 'asc' ? valueA - valueB : valueB - valueA;
+  
+        default:
+          return 0;
+      }
+    });
   }
 
   // Toggle dropdown visibility for a specific file
@@ -265,7 +275,7 @@ export class FolderComponent implements OnInit {
 
   uploadFiles(formData: FormData, isFolder: boolean) {
     this.uploading = true;
-
+  
     this.http.post(`${this.apiUrl}/upload/`, formData, {
       reportProgress: true,
       observe: 'events',
@@ -276,20 +286,52 @@ export class FolderComponent implements OnInit {
         } else if (event.type === HttpEventType.Response) {
           this.uploading = false;
           this.progress = null;
-
+  
           // Update files and folders based on server response
           const uploadedFiles = event.body?.files || [];
           uploadedFiles.forEach((file: any) => {
-            this.files.push(file);
+            // Immediately update the files array with the new file
+            this.files.push({
+              id: file.file_id,
+              name: file.file_name,
+              size: this.formatFileSize(file.size),
+              owner: file.owner || 'Unknown',  // Ensure this exists in the backend response
+              modified: file.created_at, // Ensure 'created_at' is present in the response
+              isStarred: file.is_starred,
+              isDeleted: file.is_deleted,
+              type: 'file', // Ensure this matches the file type
+            });
           });
+          alert('Files uploaded successfully!');
         }
       },
       error: (error) => {
         this.uploading = false;
         this.progress = null;
         console.error('File upload failed:', error);
+        console.log('Error received:', error);
+      
+        if (error.status === 400 && error.error?.error) {
+          this.snackBar.openFromComponent(CustomSnackbarComponent, {
+            duration: 5000,
+            data: {
+              message: error.error.error,
+              imageUrl: '/assets/sad.png' // Change to your image path
+            },
+            panelClass: ['snackbar-error']
+          });
+        } else {
+          this.snackBar.openFromComponent(CustomSnackbarComponent, {
+            duration: 5000,
+            data: {
+              message: 'File upload failed. Please try again.',
+              imageUrl: '/assets/sad.png' // Change to your image path
+            },
+            panelClass: ['snackbar-error']
+          });
+        }
       }
-    });
+    }); 
   }
 
   // Fetch files using the service
@@ -297,7 +339,15 @@ export class FolderComponent implements OnInit {
     this.fileService.getStarredFiles().subscribe({
       next: (data) => {
         console.log('Fetched Starred Files:', data);
-        this.starredFiles = data; // Update starredFiles with the fetched data
+        this.starredFiles = data.map((file: any) => ({
+          id: file.id,
+          name: file.file_name,
+          size: this.formatFileSize(file.size),
+          owner: file.user_id?.username || 'Unknown',
+          modified: file.created_at,
+          isFavorite: file.is_starred, // Set the favorite status on file fetch
+          type: 'file',
+        }));
       },
       error: (error) => {
         console.error('Error fetching starred files:', error);
@@ -335,31 +385,34 @@ export class FolderComponent implements OnInit {
   toggleStarredView(): void {
     this.showStarredFiles = !this.showStarredFiles;
     if (this.showStarredFiles) {
-      this.fetchStarredFiles();
+      this.fetchStarredFiles(); // Ensure we fetch starred files when toggling the view
     }
   }
   
   toggleStar(file: any): void {
-    const previousState = file.isStarred;
-    file.isStarred = !file.isStarred;
+    file.isFavorite = !file.isFavorite;
+
+    // Update the UI optimistically
+  this.starredFiles = this.starredFiles.map((f) =>
+    f.id === file.id ? { ...f, isFavorite: file.isFavorite } : f
+  );
   
-    if (file.isStarred) {
-      this.starredFiles.push(file); // Add to starred list
-    } else {
-      this.starredFiles = this.starredFiles.filter(f => f.id !== file.id);
-    }
-  
-    this.fileService.toggleStar(file.id, file.isStarred).subscribe({
-      next: () => console.log('Star status updated'),
+    // Call API to update the favorite status
+    this.fileService.toggleStar(file.id, file.isFavorite).subscribe({
+      next: (updatedFile: { is_starred: boolean }) => {  // Correct type for API response
+        file.is_starred = updatedFile.is_starred;
+        console.log(`File ${file.isFavorite ? 'starred' : 'unstarred'} successfully.`);
+      },
       error: (error) => {
-        console.error('Error toggling star:', error);
-        file.isStarred = !file.isStarred;// Revert on failure
-        this.fetchStarredFiles(); // Refetch as a fallback
+        console.error('Error updating favorite status:', error);
+        alert('Failed to update favorite status.');
+  
+        // Revert UI state if API call fails
+        file.isFavorite = !file.isFavorite;
       }
     });
   }
-  
-  
+
   loadFiles(): void {
     this.fileService.getFiles().subscribe(
       (files) => {
@@ -403,6 +456,8 @@ export class FolderComponent implements OnInit {
       console.error('Error fetching files and folders:', error);
     }
   }
+
+  
   
   async renameFile(fileId: number) {
     const token = this.authService.getToken();
@@ -465,8 +520,6 @@ export class FolderComponent implements OnInit {
     this.fetchFilesAndFolders();
   }
 
- 
-
   //file review
   formatBytes(bytes: number, decimals = 2): string {
     if (bytes === 0) return '0 Bytes';
@@ -494,9 +547,30 @@ export class FolderComponent implements OnInit {
     });
   }
   
-  onOpenFile(file: any): void {
-    this.router.navigate([`/files/view/${file.id}`]);
+  //onOpenFile(file: any): void {
+   // this.router.navigate([`/files/view/${file.id}`]);
+  //}
+
+  async onOpenFile(file: any): Promise<void> {
+    try {
+      // Wait for the file view tracking request to complete before navigating
+      await this.trackFileView(file.id).toPromise();
+      console.log('File view tracked successfully');
+  
+      // After tracking, navigate to the file view page
+      this.router.navigate([`/files/view/${file.id}`]);
+    } catch (error) {
+      console.error('Error tracking file view:', error);
+    }
   }
+  trackFileView(fileId: number) {
+    const token = this.authService.getToken();
+    return this.http.post(`${environment.apiUrl}/files/view/${fileId}/track/`, {}, {
+      headers: { Authorization: `Token ${token}` }
+    });
+  }
+  
+ 
 
   get selectedFileNameWithoutExtension(): string {
     return this.selectedFile?.split('.').slice(0, -1).join('.') || '';

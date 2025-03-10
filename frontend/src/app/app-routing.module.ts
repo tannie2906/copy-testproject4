@@ -18,6 +18,7 @@ import { ForgotPasswordComponent } from './forgot-password/forgot-password.compo
 import { ResetPasswordComponent } from './reset-password/reset-password.component';
 import { FileViewComponent } from './file-view/file-view.component';
 import { LockboxComponent} from './lockbox/lockbox.component';
+import { FrequentlyViewedFilesComponent } from './frequently-viewed-files/frequently-viewed-files.component';
 
 const routes: Routes = [
   { path: '', redirectTo: '/home', pathMatch: 'full' }, // Redirect to home page
@@ -37,7 +38,8 @@ const routes: Routes = [
   { path: 'forgot-password', component: ForgotPasswordComponent },
   { path: 'reset-password/:uid/:token', component: ResetPasswordComponent },
   { path: 'files/view/:file_id', component: FileViewComponent },
-  { path: 'lockbox', component: LockboxComponent }
+  { path: 'lockbox', component: LockboxComponent, canActivate: [AuthGuard] },
+  { path: 'files/frequently-viewed', component: FrequentlyViewedFilesComponent },
 ];
 
 @NgModule({

@@ -47,7 +47,7 @@ from django.db import transaction
 from testproject.settings import EMAIL_HOST_USER
 
 
-from .models import DeletedFile, UploadedFile, File, SharedFile, Profile, Folder
+from .models import DeletedFile, UploadedFile, File, SharedFile, Profile, Folder, FileFrequenly
 from .serializers import DeletedFilesSerializer, UserSerializer, UploadedFileSerializer, UserRegistrationSerializer, FileSerializer, ProfilePictureSerializer, ProfileSerializer, FolderSerializer
 from myapp.models import File, DeletedFile
 from django.contrib.auth import get_user_model
@@ -87,6 +87,8 @@ from myapp.models import AuditLog
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError 
 from .models import Lockbox
+from django.utils import timezone
+from datetime import timedelta
 
 from .gmail_api import send_email_via_gmail  # This imports the function from gmail_api.py
 
@@ -103,6 +105,7 @@ from rest_framework.response import Response
 import uuid
 from datetime import timedelta
 from django.utils.timezone import now
+from django.core.management.base import BaseCommand
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -121,14 +124,27 @@ def validate_file_owner(file_id, user):
 class FileUploadView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def detect_gibberish(self, text):
+        """Detects if the text contains gibberish characters."""
+        gibberish_pattern = r"[^a-zA-Z0-9\s\.,!?'-]"  # Allowed: letters, numbers, common symbols
+        matches = re.findall(gibberish_pattern, text)
+        return len(matches) > 10  # If too many gibberish characters, consider it invalid
+
+    def extract_text_from_docx(self, file):
+        """Extracts text from a DOCX file using python-docx."""
+        try:
+            doc = Document(file)
+            return "\n".join([para.text for para in doc.paragraphs])
+        except Exception as e:
+            return ""
+
     def post(self, request):
         try:
-            uploaded_files = request.FILES.getlist('files')  # Only handle file uploads
+            uploaded_files = request.FILES.getlist('files')
             user_id = request.user.id
 
-            # Allowed file extensions and max size
             allowed_extensions = {'jpg', 'jpeg', 'png', 'pdf', 'txt', 'docx', 'xlsx', 'csv', 'zip'}
-            max_size = 20 * 1024 * 1024  # 20 MB
+            max_size = 20 * 1024 * 1024  # 20MB
 
             uploaded_file_data = []
 
@@ -139,6 +155,20 @@ class FileUploadView(APIView):
                 if uploaded_file.size > max_size:
                     return Response({"error": f"File size exceeds 20MB: {uploaded_file.name}"}, status=400)
 
+                # Read file content for text-based files
+                if file_extension in {'txt', 'csv'}:
+                    try:
+                        content = uploaded_file.read().decode('utf-8', errors='ignore')
+                        if self.detect_gibberish(content):
+                            return Response({"error": f"Gibberish content detected in {uploaded_file.name}"}, status=400)
+                    except Exception as e:
+                        return Response({"error": f"Error reading file {uploaded_file.name}: {str(e)}"}, status=400)
+
+                elif file_extension == 'docx':
+                    content = self.extract_text_from_docx(uploaded_file)
+                    if self.detect_gibberish(content):
+                        return Response({"error": f"Gibberish content detected in {uploaded_file.name}"}, status=400)
+
                 # Save the uploaded file
                 base_upload_dir = os.path.join(settings.MEDIA_ROOT, 'uploads')
                 os.makedirs(base_upload_dir, exist_ok=True)
@@ -148,14 +178,13 @@ class FileUploadView(APIView):
 
                 # Handle encryption based on file type
                 if isinstance(uploaded_file, InMemoryUploadedFile):
-                    uploaded_file.seek(0)  # Ensure reading from the start
+                    uploaded_file.seek(0)
                     encrypt_and_save_file(uploaded_file, file_path)
-
                 elif isinstance(uploaded_file, TemporaryUploadedFile):
                     with open(uploaded_file.temporary_file_path(), 'rb') as temp_file:
                         encrypt_and_save_file(temp_file, file_path)
 
-                # Save file metadata (No folder association)
+                # Save file metadata
                 file_instance = File.objects.create(
                     file=f"uploads/{safe_file_name}",
                     file_name=uploaded_file.name,
@@ -165,7 +194,10 @@ class FileUploadView(APIView):
 
                 uploaded_file_data.append({
                     "file_id": file_instance.id,
-                    "file_name": file_instance.file_name
+                    "file_name": file_instance.file_name,
+                    "size": file_instance.size,
+                    "created_at": file_instance.created_at,
+                    "is_starred": file_instance.is_starred,
                 })
 
             return Response({
@@ -1276,3 +1308,67 @@ def save_lockbox_password(request):
     lockbox.set_password(new_password)  # ✅ Hash & save password
 
     return JsonResponse({'success': True, 'message': 'Password saved successfully'})
+
+class FileViewTracking(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, file_id):
+        try:
+            user = request.user
+            file = File.objects.get(id=file_id)
+
+            # Check if the file has already been viewed by this user
+            file_view, created = FileFrequenly.objects.get_or_create(user=user, file=file)
+
+            if not created:  # If the file is already in the user's view list, increment the count
+                file_view.view_count += 1
+                file_view.last_viewed = timezone.now()  # Update the last viewed timestamp
+                file_view.save()
+
+            return Response({"message": "File view tracked successfully"})
+        except File.DoesNotExist:
+            return Response({"error": "File not found"}, status=404)
+        
+class FrequentlyViewedFiles(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        # Get the current date and time
+        now = timezone.now()
+
+        # Get files that have at least 5 views and were viewed within the last 30 days
+        thirty_days_ago = now - timedelta(days=30)
+
+        frequently_viewed_files = FileFrequenly.objects.filter(
+            user=user,
+            view_count__gte=5,
+            last_viewed__gte=thirty_days_ago
+        ).order_by('-view_count')[:10]  # Limit to top 10 files
+
+        files_data = [
+            {
+                "id": fv.file.id,
+                "file_name": fv.file.file_name,
+                "view_count": fv.view_count,
+                "last_viewed": fv.last_viewed,
+            }
+            for fv in frequently_viewed_files
+        ]
+
+        return Response(files_data)
+
+class Command(BaseCommand):
+    help = 'Removes files with less than 3 views that were last viewed more than 30 days ago'
+
+    def handle(self, *args, **kwargs):
+        thirty_days_ago = timezone.now() - timedelta(days=30)
+        
+        files_to_remove = FileFrequenly.objects.filter(
+            view_count__lt=3,
+            last_viewed__lte=thirty_days_ago
+        )
+        
+        files_to_remove.delete()  # Remove the records
+        self.stdout.write(self.style.SUCCESS('Successfully removed old and less viewed files'))

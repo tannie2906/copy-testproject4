@@ -148,15 +148,6 @@ class DeletedFile(models.Model):
 
 class MyOTPDevice(Device):
     pass  # Extend or customize if needed
-
-class Notification(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
-    message = models.CharField(max_length=255)
-    is_read = models.BooleanField(default=False)
-    created_at = models.DateTimeField(default=datetime.now)
-
-    def __str__(self):
-        return f'Notification for {self.user.username}: {self.message}'
     
 class AuditLog(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -174,3 +165,16 @@ class Lockbox(models.Model):
 
     def check_password(self, raw_password):
         return check_password(raw_password, self.password_hash)
+    
+class FileFrequenly(models.Model):
+   
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    file = models.ForeignKey(File, on_delete=models.CASCADE)
+    view_count = models.PositiveIntegerField(default=0)
+    last_viewed = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        unique_together = ('user', 'file')  # Prevents duplicate entries for the same file and user
+
+    def __str__(self):
+        return f'{self.user.username} viewed {self.file.file_name}'

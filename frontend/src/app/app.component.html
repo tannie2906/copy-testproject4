@@ -47,7 +47,9 @@
         <a href="#" (click)="onLogout()">🚪 Logout</a>
       </div>
     </div>
-    <a (click)="goToLockBox()" *ngIf="isAuthenticated">🔒 Lock Box</a>
+    <a (click)="goToLockBox()" *ngIf="isAuthenticated">
+      <img src="assets/secretbox.png" alt="Lock Box" width="30" height="30">
+    </a>
   </nav>
 
   <!-- Search Results -->

@@ -66,6 +66,7 @@
   display: inline-block;
   position: relative;
   margin-right: 10px;
+  cursor: pointer; 
 }
 
 .dropdown-content {
@@ -225,16 +226,24 @@ input:checked + .slider:before {
   
 }
 
-
-
 .file-table td:nth-child(3),  /* 3rd column (Fav) */
 .file-table th:nth-child(3) {
   min-width: 50px;  /* Adjust as needed */
   text-align: center;
 }
 
+.favorite-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+}
 
+.starred {
+  color: gold; /* Yellow for favorite */
+}
 
-
-
+.unstarred {
+  color: gray; /* Gray for non-favorite */
+}
 

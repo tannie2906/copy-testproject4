@@ -2,9 +2,9 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from myapp import admin
-from .views import FileUploadView, CustomAuthToken, ProfileView, RegisterUserView, UploadProfilePictureView,  DeletedFilesView 
+from .views import FileUploadView, CustomAuthToken, ProfileView, RegisterUserView, UploadProfilePictureView,  DeletedFilesView, FileViewTracking
 #from .views import FileViewSet
-from . import views
+from . import views 
 from .views import FileView, RestoreFileView, PermanentlyDeleteFilesView #DeletedFileDeleteView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (
@@ -15,7 +15,7 @@ from .views import (
     EmptyTrashView, ShareFileView, SharedFileView #Verify2FA, QRGeneratorView,
 )
 from two_factor.views import SetupView 
-from .views import CustomAuthToken
+from .views import CustomAuthToken, FrequentlyViewedFiles
 from django_otp.decorators import otp_required
 from . import views
 from myapp.views import password_reset_request, password_reset_confirm, move_to_lockbox, move_out_of_lockbox, get_locked_files, verify_lockbox_password, save_lockbox_password
@@ -72,6 +72,8 @@ urlpatterns = [
     #app component
     path('apisearch/', FileSearchView.as_view(), name='apisearch'),
 
+path('files/frequently-viewed/', FrequentlyViewedFiles.as_view(), name='frequently-viewed-files'),
+path('files/view/<int:file_id>/track/', FileViewTracking.as_view(), name='file-view-track'),
 
     path('upload/', FileUploadView.as_view(), name='upload-file'),
     path('rename/<int:file_id>/', RenameFileView.as_view(), name='rename-file'),

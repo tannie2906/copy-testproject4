@@ -1,0 +1,29 @@
+<h2>Your Frequently Visited</h2>
+
+<!-- Check if there are no frequently viewed files -->
+<div *ngIf="frequentlyViewedFiles.length === 0">
+  <p>No frequently viewed files found.</p>
+</div>
+
+<!-- Modern file card layout -->
+<div class="file-cards">
+  <div *ngFor="let file of frequentlyViewedFiles" class="file-card" (click)="onOpenFile(file)">
+    <div class="file-icon">
+      <!-- Display appropriate icon based on file type -->
+      <img *ngIf="file.type === 'image'" [src]="file.url" alt="File Icon" class="file-image">
+      <i *ngIf="file.type === 'pdf'" class="file-icon-pdf">📄</i>
+      <i *ngIf="file.type === 'text'" class="file-icon-text">📝</i>
+      <i *ngIf="file.type === 'docx'" class="file-icon-docx">📑</i>
+    </div>
+    
+    <div class="file-info">
+      <h3>{{ file.file_name }}</h3>
+      <p>{{ file.view_count }} views · {{ file.last_viewed | date: 'short' }}</p>
+    </div>
+  </div>
+</div>
+
+<!-- Google Font for Lora -->
+<head>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600&display=swap" rel="stylesheet">
+</head>

@@ -18,10 +18,11 @@ export interface File {
   is_deleted?: boolean;
   deleted_at?: string;
   file_path: string;
-  isStarred?: boolean; 
+  is_starred: boolean; 
   name: string;
   content?: string;  // content is optional, since it's only available for .txt files
   url: string;
+  isFavorite: boolean; 
 }
 
 @Component({

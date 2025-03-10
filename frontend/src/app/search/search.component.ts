@@ -26,7 +26,9 @@ export class SearchComponent implements OnInit {
   searchQuery: any;
   currentFolderId: string | null = null;
   shareEmail = '';
-  sharePermissions: string | undefined = '';  
+  sharePermissions: string | undefined = ''; 
+  is_starred: boolean = false;  // Set a default value (false or true as needed)
+  isFavorite: boolean = false;
 
   constructor(
     private authService: AuthService,
@@ -104,15 +106,30 @@ export class SearchComponent implements OnInit {
     this.router.navigate([`/files/view/${file.id}`]);
   }
 
-  
-
   // Toggle starred files
-  toggleStar(file: any): void {
-    file.isStarred = !file.isStarred;
-    console.log('Star toggled:', file);
+  toggleFavorite(file: File): void {  // Explicitly set file type
+    file.isFavorite = !file.isFavorite;
+  
+    // Create a new object reference for change detection
+    this.searchResults = this.searchResults.map((f: File) =>
+      f.id === file.id ? { ...f, isFavorite: file.isFavorite } : f
+    );
+  
+    // Call API to update the favorite status
+    this.fileService.toggleStar(file.id, file.isFavorite).subscribe({
+      next: (updatedFile: { is_starred: boolean }) => {  // Correct type for API response
+        file.is_starred = updatedFile.is_starred;
+        console.log(`File ${file.isFavorite ? 'starred' : 'unstarred'} successfully.`);
+      },
+      error: (error) => {
+        console.error('Error updating favorite status:', error);
+        alert('Failed to update favorite status.');
+  
+        // Revert UI state if API call fails
+        file.isFavorite = !file.isFavorite;
+      }
+    });
   }
-
-  // ====== NEW METHODS ADDED ======
 
   // Format file size
   formatFileSize(size: number): string {
@@ -253,5 +270,4 @@ export class SearchComponent implements OnInit {
       });
     }
   }
-
 }

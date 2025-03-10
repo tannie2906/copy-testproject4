@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from .models import UploadedFile
 from .models import File, Folder
 from .models import DeletedFile  
-from .models import Profile
+from .models import Profile, FileFrequenly
 
 from rest_framework import serializers
 
@@ -15,7 +15,7 @@ class UserSerializer(serializers.ModelSerializer):
 class FileSerializer(serializers.ModelSerializer):
     class Meta:
         model = File
-        fields = ['id', 'file_name', 'file', 'size', 'user_id', 'created_at', 'is_deleted', 'deleted_at', 'file_path', 'folder']
+        fields = ['id', 'file_name', 'file', 'size', 'user_id', 'created_at', 'is_deleted', 'deleted_at', 'file_path', 'folder',  'is_starred']
 
 class FolderSerializer(serializers.ModelSerializer):
     subfolders = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
@@ -92,3 +92,12 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
 
 
+
+class FileFrequentlySerializer(serializers.ModelSerializer):
+    file = FileSerializer()  # ✅ This ensures `file.id` is included
+    id = serializers.IntegerField(source='file.id')
+    file_name = serializers.CharField(source='file.file_name')
+
+    class Meta:
+        model = FileFrequenly
+        fields = ['file', 'view_count', 'last_viewed', 'id', 'file_name']

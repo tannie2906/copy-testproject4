@@ -15,6 +15,7 @@ export class HomeComponent implements OnInit {
   @ViewChild('fileInput') fileInput!: ElementRef;
   userFiles: UserFile[] = [];
   isAuthenticated: boolean = false;
+  is2FAVerified: boolean = false; 
 
   constructor(
     private authService: AuthService,
@@ -26,15 +27,9 @@ export class HomeComponent implements OnInit {
   ngOnInit(): void {
     if (this.authService.isAuthenticated()) {
       this.isAuthenticated = true;
+      this.is2FAVerified = this.authService.is2FAVerified();
     }
   }
-  
-
-  //fetchFiles(): void {
-    //this.http.get<UserFile[]>('/api/files').subscribe((files) => {
-      //this.userFiles = files;
-    //});
-  //}
 
   onGetStartedClick(): void {
     if (this.isAuthenticated) {
@@ -60,4 +55,12 @@ export class HomeComponent implements OnInit {
   triggerFileInput(): void {
     this.fileInput.nativeElement.click(); // Programmatically click the file input
   }  
+
+  goToFrequentlyVisited(): void {
+    if (this.isAuthenticated && this.is2FAVerified) {
+      this.router.navigate(['/files/frequently-viewed']);
+    } else {
+      alert("You must be logged in and have 2FA enabled to access frequently viewed files.");
+    }
+  }
 }

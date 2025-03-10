@@ -218,3 +218,10 @@ router-outlet {
   flex-grow: 1;
   margin-top: 20px;
 }
+
+
+a img {
+  transition: all 0.3s ease-in-out;
+  filter: brightness(2); /* Increase brightness */
+}
+

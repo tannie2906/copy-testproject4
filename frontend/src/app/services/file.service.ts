@@ -21,11 +21,13 @@ export interface File {
   deleted_at?: string;
   file_path: string;
   modified: string;
-  isStarred?: boolean; 
+  is_starred: boolean;  
   name: string;
   content?: string;  // content is optional, since it's only available for .txt files
   url: string;
   tables: any;
+  isFavorite: boolean; 
+  
 
 }
 
@@ -87,15 +89,16 @@ export class FileService {
     });
   }
   
+
   toggleStar(fileId: number, isStarred: boolean) {
-    return this.http.post(
+    return this.http.post<{ is_starred: boolean }>(
       `https://127.0.0.1:8000/api/files/toggle-star/${fileId}/`,
       { isStarred },
       {
         headers: { Authorization: `Bearer ${this.authService.getToken()}` },
       }
     );
-  } 
+  }
   
   // Get URL for a specific file
   getFileUrl(fileName: string): Observable<{ fileUrl: string }> {
@@ -145,7 +148,6 @@ export class FileService {
     a.click();
     window.URL.revokeObjectURL(downloadUrl);
   }
-
 
   // Example method to search files
   searchFiles(searchTerm: string, page: number) {

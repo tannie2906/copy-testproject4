@@ -18,18 +18,11 @@
     </p>
     
 
-    <button class="cta-button" (click)="onGetStartedClick()">⬆ Upload</button>
+    <button class="cta-button" (click)="goToFrequentlyVisited()"[disabled]="!isAuthenticated || !is2FAVerified">Frequently Visit</button>
   </section>
-
-  <!-- Hidden File Input -->
-  <input
-    type="file"
-    id="fileUpload"
-    style="display: none;"
-    #fileInput
-    (change)="onFileUpload($event)"
-    />
   </main>
+
+  
 <!-- Button to Trigger File Input -->
      <!--Other content (feature cards) will remain as is or be removed -->
    

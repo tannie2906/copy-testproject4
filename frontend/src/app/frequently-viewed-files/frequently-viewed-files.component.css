@@ -1,0 +1,98 @@
+/* Overall styling */
+h2 {
+  text-align: center;
+  font-size: 2.5em;
+  margin-bottom: 20px;
+  color: #203e79; 
+  font-family: 'Lora', serif;
+  text-shadow: 2px 2px 5px rgba(255, 216, 182, 0.5);
+}
+  
+  /* Grid layout for file cards */
+  .file-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 20px;
+    padding: 20px;
+    justify-content: center;
+    cursor: pointer; 
+    pointer-events: auto !important;
+  }
+  
+  /* Cute file card styling */
+  .file-card {
+    background: #f5fcff;
+    border: 3px solid #033a4f;
+    pointer-events: auto !important;
+    border-radius: 15px;
+    box-shadow: 3px 3px 10px rgba(146, 191, 205, 0.5);
+    padding: 15px;
+    text-align: center;
+    transition: transform 0.3s ease-in-out, box-shadow 0.3s;
+  }
+  
+  .file-card:hover {
+    transform: translateY(-8px);
+    background: #d7ab9f;
+    box-shadow: 5px 5px 15px rgba(186, 215, 223, 0.7);
+  }
+  
+  /* Floating animation */
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  
+  /* Make the icons bounce when hovered */
+  .file-card:hover .file-icon i {
+    animation: bounce 0.8s infinite ease-in-out;
+  }
+  
+  /* File icon styling */
+  .file-icon {
+    margin-bottom: 12px;
+    pointer-events: auto !important;
+  }
+  
+  .file-icon img {
+    max-width: 90px;
+    height: auto;
+    border-radius: 10px;
+    pointer-events: auto !important;
+  }
+  
+  /* Cute emojis for file types */
+  .file-icon-pdf::before { content: "📄"; }
+  .file-icon-text::before { content: "📝"; }
+  .file-icon-docx::before { content: "📑"; }
+  
+  .file-icon-pdf, .file-icon-text, .file-icon-docx {
+    font-size: 60px;
+    display: block;
+    margin: 0 auto;
+  }
+  
+  /* File info styling */
+  .file-info h3 {
+    font-size: 1.3em;
+    margin-bottom: 5px;
+    color: #162f6d;
+    font-family: 'Lora', serif;
+  }
+  
+  .file-info p {
+    font-size: 1em;
+    color: #162f6d;
+    font-family: 'Lora', serif;
+    margin: 3px 0;
+  }
+  
+  /* No files found message */
+  div p {
+    text-align: center;
+    font-size: 1.2em;
+    color: #162f6d;
+    font-family: 'Lora', serif;
+    margin-top: 20px;
+  }
+  

@@ -99,3 +99,19 @@
   background-color: #f4f4f4;
   color: #007aff;
 }
+
+.favorite-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+}
+
+.starred {
+  color: gold; /* Yellow for favorite */
+}
+
+.unstarred {
+  color: gray; /* Gray for non-favorite */
+}
+

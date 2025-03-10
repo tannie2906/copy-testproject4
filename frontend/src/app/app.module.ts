@@ -34,7 +34,10 @@ import { ResetPasswordComponent } from './reset-password/reset-password.componen
 import { FileViewComponent } from './file-view/file-view.component'; //for dialog box
 import { FormsModule } from '@angular/forms';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { LockboxComponent } from './lockbox/lockbox.component'
+import { LockboxComponent } from './lockbox/lockbox.component';
+import { FrequentlyViewedFilesComponent } from './frequently-viewed-files/frequently-viewed-files.component';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
+import { CustomSnackbarComponent } from './custom-snackbar/custom-snackbar.component';
 //import { QRCodeModule } from 'angularx-qrcode'
 //import { QrCodeComponent } from './qr-code/qr-code.component';  
 
@@ -61,6 +64,8 @@ import { LockboxComponent } from './lockbox/lockbox.component'
     FileViewComponent,
     Setup2faComponent,
     LockboxComponent,
+    FrequentlyViewedFilesComponent,
+    CustomSnackbarComponent,
     //QrCodeComponent,
     
 
@@ -77,6 +82,7 @@ import { LockboxComponent } from './lockbox/lockbox.component'
     MatDialogModule,
     MatButtonModule,
     FormsModule,
+    MatSnackBarModule, 
     //Setup2faComponent,
    // QRCodeModule,
    

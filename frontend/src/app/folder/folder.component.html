@@ -39,8 +39,8 @@
         <tr>
           <th (click)="sortFiles('name')">Name</th>
           <th (click)="sortFiles('size')">Size</th>
-          <th>Fav</th>
           <th (click)="sortFiles('modified')">Date</th>
+          <th>Fav</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -52,14 +52,15 @@
             <a (click)="onOpenFile(file)">{{ file.name }}</a>
           </td>
           <td>{{ file.size || '—' }}</td>
-          
-          <td>
-            <button class="star-button" (click)="toggleStar(file)">
-              <i class="fa" [ngClass]="file.isStarred ? 'fa-star: star' : 'fa-star-o: unstar'"></i>
-            </button>
-          </td>
+      
 
           <td>{{ file.modified ? (file.modified | date: 'medium') : 'Unknown' }}</td>
+
+          <button (click)="toggleStar(file)" class="favorite-btn">
+            <span [ngClass]="{'starred': file.isFavorite, 'unstarred': !file.isFavorite}">
+              {{ file.isFavorite ? '★' : '☆' }}
+            </span> 
+          </button>
 
           <td class="actions">
 
