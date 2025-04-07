@@ -44,7 +44,7 @@ from django.utils.decorators import method_decorator
 from django.db import transaction
 
 #from myapp.gmail_api import send_email
-from testproject.settings import EMAIL_HOST_USER
+#from testproject.settings import EMAIL_HOST_USER
 
 
 from .models import DeletedFile, UploadedFile, File, SharedFile, Profile, Folder, FileFrequenly
